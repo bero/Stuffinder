@@ -59,6 +59,7 @@ export function ItemDetail({ id }: Props) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Array<Location & { full_path: string }>>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -102,6 +103,7 @@ export function ItemDetail({ id }: Props) {
     setEditing(true);
 
     try {
+      setOptionsLoading(true);
       const [cats, locs] = await Promise.all([
         getCategories(),
         getLocationsWithPath(),
@@ -110,6 +112,8 @@ export function ItemDetail({ id }: Props) {
       setLocations(locs);
     } catch (err) {
       console.error('Failed to load options:', err);
+    } finally {
+      setOptionsLoading(false);
     }
   }
 
@@ -325,7 +329,8 @@ export function ItemDetail({ id }: Props) {
                     aria-label="Replace photo"
                   >
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v4h4m12-4v4h-4M4 8V4h4m12 4V4h-4M9 12a3 3 0 106 0 3 3 0 00-6 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
                     </svg>
                   </button>
                   {photoPreview && (
@@ -369,12 +374,18 @@ export function ItemDetail({ id }: Props) {
 
           {/* Location */}
           <div>
-            <label class="input-label" for="location">Location</label>
+            <label class="input-label flex items-center gap-2" for="location">
+              Location
+              {optionsLoading && (
+                <span class="animate-spin rounded-full h-3 w-3 border-2 border-slate-400 border-t-transparent"></span>
+              )}
+            </label>
             <select
               id="location"
               value={locationId}
               onChange={(e) => setLocationId((e.target as HTMLSelectElement).value)}
               class="select"
+              disabled={optionsLoading}
             >
               <option value="">Select location...</option>
               {locations.map((loc) => (
@@ -387,12 +398,18 @@ export function ItemDetail({ id }: Props) {
 
           {/* Category */}
           <div>
-            <label class="input-label" for="category">Category</label>
+            <label class="input-label flex items-center gap-2" for="category">
+              Category
+              {optionsLoading && (
+                <span class="animate-spin rounded-full h-3 w-3 border-2 border-slate-400 border-t-transparent"></span>
+              )}
+            </label>
             <select
               id="category"
               value={categoryId}
               onChange={(e) => setCategoryId((e.target as HTMLSelectElement).value)}
               class="select"
+              disabled={optionsLoading}
             >
               <option value="">Select category...</option>
               {categories.map((cat) => (
