@@ -20,7 +20,11 @@ function BackIcon() {
   );
 }
 
-export function AddItem() {
+interface Props {
+  activeHouseholdId?: string;
+}
+
+export function AddItem({ activeHouseholdId }: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -36,11 +40,12 @@ export function AddItem() {
   
   // Load categories and locations
   useEffect(() => {
+    if (!activeHouseholdId) return;
     async function loadData() {
       try {
         const [cats, locs] = await Promise.all([
-          getCategories(),
-          getLocationsWithPath(),
+          getCategories(activeHouseholdId!),
+          getLocationsWithPath(activeHouseholdId!),
         ]);
         setCategories(cats);
         setLocations(locs);
@@ -49,7 +54,7 @@ export function AddItem() {
       }
     }
     loadData();
-  }, []);
+  }, [activeHouseholdId]);
   
   // Handle photo selection
   function handlePhotoChange(e: Event) {
@@ -84,25 +89,29 @@ export function AddItem() {
   // Save item
   async function handleSubmit(e: Event) {
     e.preventDefault();
-    
+
+    if (!activeHouseholdId) {
+      setError('No household selected');
+      return;
+    }
+
     if (!name.trim()) {
       setError('Please enter a name');
       return;
     }
-    
+
     try {
       setSaving(true);
       setError(null);
-      
-      await createItem({
+
+      await createItem(activeHouseholdId, {
         name: name.trim(),
         description: description.trim() || undefined,
         category_id: categoryId || undefined,
         location_id: locationId || undefined,
         photo: photo || undefined,
       });
-      
-      // Navigate back to home
+
       route('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save item');

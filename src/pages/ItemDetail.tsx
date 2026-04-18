@@ -39,9 +39,10 @@ function CameraIcon() {
 
 interface Props {
   id?: string;
+  activeHouseholdId?: string;
 }
 
-export function ItemDetail({ id }: Props) {
+export function ItemDetail({ id, activeHouseholdId }: Props) {
   const [item, setItem] = useState<ItemWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +61,7 @@ export function ItemDetail({ id }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Array<Location & { full_path: string }>>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,8 +92,20 @@ export function ItemDetail({ id }: Props) {
     loadItem();
   }, [id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!item) {
+      setPhotoUrl(null);
+      return;
+    }
+    getPhotoUrl(item.photo_path).then((url) => {
+      if (!cancelled) setPhotoUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [item?.photo_path]);
+
   async function enterEditMode() {
-    if (!item) return;
+    if (!item || !activeHouseholdId) return;
 
     setName(item.name);
     setDescription(item.description || '');
@@ -105,8 +119,8 @@ export function ItemDetail({ id }: Props) {
     try {
       setOptionsLoading(true);
       const [cats, locs] = await Promise.all([
-        getCategories(),
-        getLocationsWithPath(),
+        getCategories(activeHouseholdId),
+        getLocationsWithPath(activeHouseholdId),
       ]);
       setCategories(cats);
       setLocations(locs);
@@ -144,7 +158,7 @@ export function ItemDetail({ id }: Props) {
 
   async function handleSave(e: Event) {
     e.preventDefault();
-    if (!item) return;
+    if (!item || !activeHouseholdId) return;
 
     if (!name.trim()) {
       setError('Please enter a name');
@@ -157,6 +171,7 @@ export function ItemDetail({ id }: Props) {
 
       await updateItem(
         item.id,
+        activeHouseholdId,
         {
           name: name.trim(),
           description: description.trim() || undefined,
@@ -195,7 +210,6 @@ export function ItemDetail({ id }: Props) {
     }
   }
 
-  const photoUrl = item ? getPhotoUrl(item.photo_path) : null;
   const displayPhoto = photoPreview || photoUrl;
 
   return (

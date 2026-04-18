@@ -1,33 +1,82 @@
 import { supabase } from './supabase';
 import { uploadPhoto, deletePhoto } from './storage';
-import type { 
-  Category, 
-  Location, 
-  Item, 
-  ItemWithDetails, 
+import type {
+  Category,
+  Location,
+  Item,
+  ItemWithDetails,
   ItemFormData,
   CategoryFormData,
-  LocationFormData 
+  LocationFormData,
+  HouseholdInvite,
 } from '../types/database';
 
-// ============ Items ============
+// ============ Households ============
 
-export async function getItems(): Promise<ItemWithDetails[]> {
+export async function createHousehold(name: string): Promise<string> {
+  const { data, error } = await supabase.rpc('create_household', { h_name: name });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function acceptInvite(code: string): Promise<string> {
+  const { data, error } = await supabase.rpc('accept_invite', { invite_code: code });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function createInvite(householdId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('create_invite', { h_id: householdId });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function getInvites(householdId: string): Promise<HouseholdInvite[]> {
   const { data, error } = await supabase
-    .from('items_with_details')
+    .from('household_invites')
     .select('*')
-    .order('updated_at', { ascending: false });
-  
+    .eq('household_id', householdId)
+    .is('used_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return data || [];
 }
 
-export async function searchItems(query: string): Promise<ItemWithDetails[]> {
+export async function revokeInvite(code: string): Promise<void> {
+  const { error } = await supabase.from('household_invites').delete().eq('code', code);
+  if (error) throw error;
+}
+
+export async function leaveHousehold(householdId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('household_members')
+    .delete()
+    .eq('household_id', householdId)
+    .eq('user_id', userId);
+  if (error) throw error;
+}
+
+// ============ Items ============
+
+export async function getItems(householdId: string): Promise<ItemWithDetails[]> {
   const { data, error } = await supabase
-    .rpc('search_items', { search_query: query });
-  
+    .from('items_with_details')
+    .select('*')
+    .eq('household_id', householdId)
+    .order('updated_at', { ascending: false });
+
   if (error) throw error;
   return data || [];
+}
+
+export async function searchItems(householdId: string, query: string): Promise<ItemWithDetails[]> {
+  if (!query.trim()) return getItems(householdId);
+  const { data, error } = await supabase
+    .rpc('search_items', { search_query: query });
+  if (error) throw error;
+  // RLS filters to member households already, but in case the user is in multiple we scope further.
+  return (data || []).filter((row: ItemWithDetails) => row.household_id === householdId);
 }
 
 export async function getItem(id: string): Promise<ItemWithDetails | null> {
@@ -36,29 +85,29 @@ export async function getItem(id: string): Promise<ItemWithDetails | null> {
     .select('*')
     .eq('id', id)
     .single();
-  
+
   if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
+    if (error.code === 'PGRST116') return null;
     throw error;
   }
   return data;
 }
 
-export async function createItem(formData: ItemFormData): Promise<Item> {
+export async function createItem(householdId: string, formData: ItemFormData): Promise<Item> {
   let photoPath: string | undefined;
-  
-  // Upload photo if provided
+
   if (formData.photo) {
-    const result = await uploadPhoto(formData.photo);
+    const result = await uploadPhoto(formData.photo, householdId);
     if (!result.success) {
       throw new Error(`Photo upload failed: ${result.error}`);
     }
     photoPath = result.path;
   }
-  
+
   const { data, error } = await supabase
     .from('items')
     .insert({
+      household_id: householdId,
       name: formData.name,
       description: formData.description || null,
       category_id: formData.category_id || null,
@@ -67,81 +116,84 @@ export async function createItem(formData: ItemFormData): Promise<Item> {
     })
     .select()
     .single();
-  
+
   if (error) {
-    // Clean up uploaded photo if insert failed
     if (photoPath) await deletePhoto(photoPath);
     throw error;
   }
-  
+
   return data;
 }
 
-export async function updateItem(id: string, formData: Partial<ItemFormData>, oldPhotoPath?: string | null): Promise<Item> {
+export async function updateItem(
+  id: string,
+  householdId: string,
+  formData: Partial<ItemFormData>,
+  oldPhotoPath?: string | null,
+): Promise<Item> {
   let photoPath: string | undefined;
-  
-  // Upload new photo if provided
+
   if (formData.photo) {
-    const result = await uploadPhoto(formData.photo);
+    const result = await uploadPhoto(formData.photo, householdId);
     if (!result.success) {
       throw new Error(`Photo upload failed: ${result.error}`);
     }
     photoPath = result.path;
-    
-    // Delete old photo
+
     if (oldPhotoPath) {
       await deletePhoto(oldPhotoPath);
     }
   }
-  
+
   const updateData: Partial<Item> = {};
   if (formData.name !== undefined) updateData.name = formData.name;
   if (formData.description !== undefined) updateData.description = formData.description || null;
   if (formData.category_id !== undefined) updateData.category_id = formData.category_id || null;
   if (formData.location_id !== undefined) updateData.location_id = formData.location_id || null;
   if (photoPath) updateData.photo_path = photoPath;
-  
+
   const { data, error } = await supabase
     .from('items')
     .update(updateData)
     .eq('id', id)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
 
 export async function deleteItem(id: string, photoPath?: string | null): Promise<void> {
-  // Delete photo from storage first
   if (photoPath) {
     await deletePhoto(photoPath);
   }
-  
+
   const { error } = await supabase
     .from('items')
     .delete()
     .eq('id', id);
-  
+
   if (error) throw error;
 }
 
 // ============ Categories ============
 
-export async function getCategories(): Promise<Category[]> {
+export async function getCategories(householdId: string): Promise<Category[]> {
   const { data, error } = await supabase
     .from('categories')
     .select('*')
+    .eq('household_id', householdId)
     .order('sort_order', { ascending: true });
-  
+
   if (error) throw error;
   return data || [];
 }
 
-export async function createCategory(formData: CategoryFormData): Promise<Category> {
+export async function createCategory(householdId: string, formData: CategoryFormData): Promise<Category> {
   const { data, error } = await supabase
     .from('categories')
     .insert({
+      household_id: householdId,
       name: formData.name,
       icon: formData.icon || '📦',
       color: formData.color || '#6B7280',
@@ -149,7 +201,7 @@ export async function createCategory(formData: CategoryFormData): Promise<Catego
     })
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -161,7 +213,7 @@ export async function updateCategory(id: string, formData: Partial<CategoryFormD
     .eq('id', id)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -171,53 +223,52 @@ export async function deleteCategory(id: string): Promise<void> {
     .from('categories')
     .delete()
     .eq('id', id);
-  
+
   if (error) throw error;
 }
 
 // ============ Locations ============
 
-export async function getLocations(): Promise<Location[]> {
+export async function getLocations(householdId: string): Promise<Location[]> {
   const { data, error } = await supabase
     .from('locations')
     .select('*')
+    .eq('household_id', householdId)
     .order('sort_order', { ascending: true });
-  
+
   if (error) throw error;
   return data || [];
 }
 
-// Get locations with full path (uses recursive CTE in the view)
-export async function getLocationsWithPath(): Promise<Array<Location & { full_path: string }>> {
-  // For hierarchical display, we build the path client-side
-  const locations = await getLocations();
-  
+export async function getLocationsWithPath(householdId: string): Promise<Array<Location & { full_path: string }>> {
+  const locations = await getLocations(householdId);
   const locationMap = new Map(locations.map(l => [l.id, l]));
-  
+
   function getPath(loc: Location): string {
     const parts: string[] = [loc.name];
     let current = loc;
-    
+
     while (current.parent_id) {
       const parent = locationMap.get(current.parent_id);
       if (!parent) break;
       parts.unshift(parent.name);
       current = parent;
     }
-    
+
     return parts.join(' > ');
   }
-  
+
   return locations.map(loc => ({
     ...loc,
     full_path: getPath(loc),
   }));
 }
 
-export async function createLocation(formData: LocationFormData): Promise<Location> {
+export async function createLocation(householdId: string, formData: LocationFormData): Promise<Location> {
   const { data, error } = await supabase
     .from('locations')
     .insert({
+      household_id: householdId,
       name: formData.name,
       parent_id: formData.parent_id || null,
       icon: formData.icon || '📍',
@@ -225,7 +276,7 @@ export async function createLocation(formData: LocationFormData): Promise<Locati
     })
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -237,7 +288,7 @@ export async function updateLocation(id: string, formData: Partial<LocationFormD
     .eq('id', id)
     .select()
     .single();
-  
+
   if (error) throw error;
   return data;
 }
@@ -247,6 +298,6 @@ export async function deleteLocation(id: string): Promise<void> {
     .from('locations')
     .delete()
     .eq('id', id);
-  
+
   if (error) throw error;
 }

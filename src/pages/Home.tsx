@@ -13,18 +13,25 @@ function SearchIcon() {
 }
 
 function ItemCard({ item }: { item: ItemWithDetails }) {
-  const photoUrl = getPhotoUrl(item.photo_path);
-  
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPhotoUrl(item.photo_path).then((url) => {
+      if (!cancelled) setPhotoUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [item.photo_path]);
+
   return (
     <button
       onClick={() => route(`/item/${item.id}`)}
       class="card flex gap-4 w-full text-left hover:bg-slate-750 active:bg-slate-700 transition-colors"
     >
-      {/* Photo thumbnail */}
       <div class="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-slate-700">
         {photoUrl ? (
-          <img 
-            src={photoUrl} 
+          <img
+            src={photoUrl}
             alt={item.name}
             class="w-full h-full object-cover"
             loading="lazy"
@@ -35,20 +42,19 @@ function ItemCard({ item }: { item: ItemWithDetails }) {
           </div>
         )}
       </div>
-      
-      {/* Item info */}
+
       <div class="flex-1 min-w-0">
         <h3 class="font-semibold text-slate-100 truncate">{item.name}</h3>
-        
+
         {item.location_full_path && (
           <p class="text-sm text-slate-400 mt-1 flex items-center gap-1">
             <span>📍</span>
             <span class="truncate">{item.location_full_path}</span>
           </p>
         )}
-        
+
         {item.category_name && (
-          <span 
+          <span
             class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-xs font-medium"
             style={{ backgroundColor: `${item.category_color}20`, color: item.category_color || '#9ca3af' }}
           >
@@ -69,7 +75,7 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
         {hasSearch ? 'No items found' : 'No items yet'}
       </h2>
       <p class="text-slate-400 mt-2">
-        {hasSearch 
+        {hasSearch
           ? 'Try a different search term'
           : 'Tap the + button to add your first item'
         }
@@ -78,22 +84,22 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
   );
 }
 
-export function Home() {
+interface Props {
+  activeHouseholdId?: string;
+}
+
+export function Home({ activeHouseholdId }: Props) {
   const [items, setItems] = useState<ItemWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
-  
-  // Load items
-  useEffect(() => {
-    loadItems();
-  }, []);
-  
+
   async function loadItems() {
+    if (!activeHouseholdId) return;
     try {
       setLoading(true);
       setError(null);
-      const data = await getItems();
+      const data = await getItems(activeHouseholdId);
       setItems(data);
     } catch (err) {
       setError('Failed to load items');
@@ -102,13 +108,17 @@ export function Home() {
       setLoading(false);
     }
   }
-  
-  // Search with debounce
+
   useEffect(() => {
+    loadItems();
+  }, [activeHouseholdId]);
+
+  useEffect(() => {
+    if (!activeHouseholdId) return;
     const timer = setTimeout(async () => {
       if (searchQuery.trim()) {
         try {
-          const results = await searchItems(searchQuery);
+          const results = await searchItems(activeHouseholdId, searchQuery);
           setItems(results);
         } catch (err) {
           console.error('Search error:', err);
@@ -117,19 +127,17 @@ export function Home() {
         loadItems();
       }
     }, 300);
-    
+
     return () => clearTimeout(timer);
-  }, [searchQuery]);
-  
+  }, [searchQuery, activeHouseholdId]);
+
   return (
     <div class="px-4 pt-6">
-      {/* Header */}
       <header class="mb-6">
         <h1 class="text-2xl font-bold text-slate-100">StuffFinder</h1>
         <p class="text-slate-400">Find where you put things</p>
       </header>
-      
-      {/* Search bar */}
+
       <div class="relative mb-6">
         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           <SearchIcon />
@@ -142,16 +150,14 @@ export function Home() {
           class="input pl-12"
         />
       </div>
-      
-      {/* Error message */}
+
       {error && (
         <div class="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-4">
           {error}
           <button onClick={loadItems} class="ml-2 underline">Retry</button>
         </div>
       )}
-      
-      {/* Loading state */}
+
       {loading ? (
         <div class="flex justify-center py-12">
           <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent"></div>
@@ -159,7 +165,6 @@ export function Home() {
       ) : items.length === 0 ? (
         <EmptyState hasSearch={searchQuery.trim().length > 0} />
       ) : (
-        /* Items list */
         <div class="space-y-3">
           {items.map((item) => (
             <ItemCard key={item.id} item={item} />

@@ -1,8 +1,32 @@
-// TypeScript types matching the Supabase database schema
-// These provide compile-time type checking for all database operations
+// TypeScript types matching the Supabase database schema.
+
+export interface Household {
+  id: string;
+  name: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface HouseholdMembership {
+  household_id: string;
+  role: 'owner' | 'member';
+  joined_at: string;
+  household: Household;
+}
+
+export interface HouseholdInvite {
+  code: string;
+  household_id: string;
+  created_by: string;
+  expires_at: string;
+  used_at: string | null;
+  used_by: string | null;
+  created_at: string;
+}
 
 export interface Category {
   id: string;
+  household_id: string;
   name: string;
   icon: string;
   color: string;
@@ -12,6 +36,7 @@ export interface Category {
 
 export interface Location {
   id: string;
+  household_id: string;
   name: string;
   parent_id: string | null;
   icon: string;
@@ -19,25 +44,26 @@ export interface Location {
   created_at: string;
 }
 
-// Location with computed full path (from recursive query)
 export interface LocationWithPath extends Location {
   full_path: string;
 }
 
 export interface Item {
   id: string;
+  household_id: string;
   name: string;
   description: string | null;
   photo_path: string | null;
   category_id: string | null;
   location_id: string | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
-// Item with joined category and location details (from view)
 export interface ItemWithDetails {
   id: string;
+  household_id: string;
   name: string;
   description: string | null;
   photo_path: string | null;
@@ -52,7 +78,6 @@ export interface ItemWithDetails {
   location_full_path: string | null;
 }
 
-// Form data types (for creating/updating)
 export interface ItemFormData {
   name: string;
   description?: string;
@@ -72,46 +97,3 @@ export interface LocationFormData {
   parent_id?: string;
   icon?: string;
 }
-
-// Supabase generated types helper
-// You can generate these automatically with: npx supabase gen types typescript
-export interface Database {
-  public: {
-    Tables: {
-      categories: {
-        Row: Category;
-        Insert: Omit<Category, 'id' | 'created_at'> & { id?: string; created_at?: string };
-        Update: Partial<Omit<Category, 'id' | 'created_at'>>;
-      };
-      locations: {
-        Row: Location;
-        Insert: Omit<Location, 'id' | 'created_at'> & { id?: string; created_at?: string };
-        Update: Partial<Omit<Location, 'id' | 'created_at'>>;
-      };
-      items: {
-        Row: Item;
-        Insert: Omit<Item, 'id' | 'created_at' | 'updated_at'> & { 
-          id?: string; 
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<Omit<Item, 'id' | 'created_at' | 'updated_at'>>;
-      };
-    };
-    Views: {
-      items_with_details: {
-        Row: ItemWithDetails;
-      };
-    };
-    Functions: {
-      search_items: {
-        Args: { search_query: string };
-        Returns: ItemWithDetails[];
-      };
-    };
-  };
-}
-
-// Utility type for Supabase responses
-export type DbResult<T> = T extends PromiseLike<infer U> ? U : never;
-export type DbResultOk<T> = T extends PromiseLike<{ data: infer U }> ? Exclude<U, null> : never;
