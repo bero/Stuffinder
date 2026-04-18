@@ -4,6 +4,8 @@ import {
   getLocationsWithPath,
   createCategory,
   createLocation,
+  updateCategory,
+  updateLocation,
   deleteCategory,
   deleteLocation,
   createInvite,
@@ -31,6 +33,14 @@ function TrashIcon() {
   );
 }
 
+function PencilIcon() {
+  return (
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  );
+}
+
 type Tab = 'household' | 'categories' | 'locations';
 
 interface Props {
@@ -52,6 +62,11 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
   const [newParentId, setNewParentId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editIcon, setEditIcon] = useState('');
+  const [editParentId, setEditParentId] = useState('');
 
   const [invites, setInvites] = useState<HouseholdInvite[]>([]);
   const [creatingInvite, setCreatingInvite] = useState(false);
@@ -98,6 +113,69 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
     setNewParentId('');
     setShowAddForm(false);
     setError(null);
+    setEditingId(null);
+  }
+
+  function startEditCategory(cat: Category) {
+    setEditingId(cat.id);
+    setEditName(cat.name);
+    setEditIcon(cat.icon || '');
+    setShowAddForm(false);
+    setError(null);
+  }
+
+  function startEditLocation(loc: Location) {
+    setEditingId(loc.id);
+    setEditName(loc.name);
+    setEditIcon(loc.icon || '');
+    setEditParentId(loc.parent_id || '');
+    setShowAddForm(false);
+    setError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setError(null);
+  }
+
+  async function handleUpdateCategory(e: Event) {
+    e.preventDefault();
+    if (!editingId || !editName.trim()) return;
+    try {
+      setSaving(true);
+      setError(null);
+      await updateCategory(editingId, { name: editName.trim(), icon: editIcon || undefined });
+      await loadData();
+      setEditingId(null);
+    } catch {
+      setError('Failed to update category');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpdateLocation(e: Event) {
+    e.preventDefault();
+    if (!editingId || !editName.trim()) return;
+    if (editParentId === editingId) {
+      setError('A location cannot be its own parent');
+      return;
+    }
+    try {
+      setSaving(true);
+      setError(null);
+      await updateLocation(editingId, {
+        name: editName.trim(),
+        icon: editIcon || undefined,
+        parent_id: editParentId || undefined,
+      });
+      await loadData();
+      setEditingId(null);
+    } catch {
+      setError('Failed to update location');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleAddCategory(e: Event) {
@@ -325,25 +403,64 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
         </div>
       ) : activeTab === 'categories' ? (
         <div class="space-y-3">
-          {categories.map((cat) => (
-            <div key={cat.id} class="card flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <span
-                  class="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
-                  style={{ backgroundColor: `${cat.color}30` }}
-                >
-                  {cat.icon}
-                </span>
-                <span class="font-medium">{cat.name}</span>
+          {categories.map((cat) =>
+            editingId === cat.id ? (
+              <form key={cat.id} onSubmit={handleUpdateCategory} class="card space-y-3">
+                <div class="flex gap-3">
+                  <input
+                    type="text"
+                    value={editIcon}
+                    onInput={(e) => setEditIcon((e.target as HTMLInputElement).value)}
+                    placeholder="📦"
+                    class="input w-16 text-center text-xl"
+                    maxLength={2}
+                  />
+                  <input
+                    type="text"
+                    value={editName}
+                    onInput={(e) => setEditName((e.target as HTMLInputElement).value)}
+                    class="input flex-1"
+                    required
+                  />
+                </div>
+                {error && <p class="text-red-400 text-sm">{error}</p>}
+                <div class="flex gap-2">
+                  <button type="button" onClick={cancelEdit} class="btn-secondary flex-1">Cancel</button>
+                  <button type="submit" disabled={saving} class="btn-primary flex-1">
+                    {saving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div key={cat.id} class="card flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <span
+                    class="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
+                    style={{ backgroundColor: `${cat.color}30` }}
+                  >
+                    {cat.icon}
+                  </span>
+                  <span class="font-medium">{cat.name}</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button
+                    onClick={() => startEditCategory(cat)}
+                    class="p-2 text-slate-400 hover:text-slate-200 transition-colors"
+                    aria-label="Edit"
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCategory(cat.id)}
+                    class="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                    aria-label="Delete"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => handleDeleteCategory(cat.id)}
-                class="p-2 text-slate-500 hover:text-red-400 transition-colors"
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
+            ),
+          )}
 
           {showAddForm ? (
             <form onSubmit={handleAddCategory} class="card space-y-3">
@@ -385,22 +502,75 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
         </div>
       ) : activeTab === 'locations' ? (
         <div class="space-y-3">
-          {locations.map((loc) => (
-            <div key={loc.id} class="card flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <span class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-xl">
-                  {loc.icon}
-                </span>
-                <span class="font-medium">{loc.full_path}</span>
+          {locations.map((loc) =>
+            editingId === loc.id ? (
+              <form key={loc.id} onSubmit={handleUpdateLocation} class="card space-y-3">
+                <div class="flex gap-3">
+                  <input
+                    type="text"
+                    value={editIcon}
+                    onInput={(e) => setEditIcon((e.target as HTMLInputElement).value)}
+                    placeholder="📍"
+                    class="input w-16 text-center text-xl"
+                    maxLength={2}
+                  />
+                  <input
+                    type="text"
+                    value={editName}
+                    onInput={(e) => setEditName((e.target as HTMLInputElement).value)}
+                    class="input flex-1"
+                    required
+                  />
+                </div>
+                <select
+                  value={editParentId}
+                  onChange={(e) => setEditParentId((e.target as HTMLSelectElement).value)}
+                  class="select"
+                >
+                  <option value="">No parent (top level)</option>
+                  {locations
+                    .filter((l) => l.id !== loc.id)
+                    .map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.icon} {l.full_path}
+                      </option>
+                    ))}
+                </select>
+                {error && <p class="text-red-400 text-sm">{error}</p>}
+                <div class="flex gap-2">
+                  <button type="button" onClick={cancelEdit} class="btn-secondary flex-1">Cancel</button>
+                  <button type="submit" disabled={saving} class="btn-primary flex-1">
+                    {saving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div key={loc.id} class="card flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <span class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-xl">
+                    {loc.icon}
+                  </span>
+                  <span class="font-medium">{loc.full_path}</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button
+                    onClick={() => startEditLocation(loc)}
+                    class="p-2 text-slate-400 hover:text-slate-200 transition-colors"
+                    aria-label="Edit"
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteLocation(loc.id)}
+                    class="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                    aria-label="Delete"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => handleDeleteLocation(loc.id)}
-                class="p-2 text-slate-500 hover:text-red-400 transition-colors"
-              >
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
+            ),
+          )}
 
           {showAddForm ? (
             <form onSubmit={handleAddLocation} class="card space-y-3">
