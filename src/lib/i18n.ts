@@ -105,6 +105,7 @@ const en: Dict = {
   'settings.tabs.household': 'Household',
   'settings.tabs.categories': 'Categories',
   'settings.tabs.locations': 'Locations',
+  'settings.tabs.tags': 'Tags',
   'settings.yourHouseholds': 'Your households',
   'settings.owner': 'owner',
   'settings.member': 'member',
@@ -180,6 +181,20 @@ const en: Dict = {
   'pwa.updateBody': 'A new version is ready.',
   'pwa.updateAction': 'Reload',
   'pwa.updateDismiss': 'Later',
+
+  'settings.addTag': 'Add tag',
+  'settings.tagName': 'Tag name',
+  'settings.noTags': 'No tags yet.',
+  'settings.deleteTagTitle': 'Delete tag "{name}"?',
+  'settings.deleteTagAffected': '{count} items will lose this tag.',
+  'settings.failedAddTag': 'Failed to add tag',
+  'settings.failedDeleteTag': 'Failed to delete tag',
+  'settings.failedUpdateTag': 'Failed to update tag',
+
+  'addItem.tags': 'Tags',
+
+  'tags.searchOrCreate': 'Type to search or create a tag',
+  'tags.create': 'Create "{name}"',
 
   'about.tab': 'About',
   'about.bio': 'My name is Roland Bengtsson. I am originally from Sweden but live in Finland.',
@@ -281,6 +296,7 @@ const sv: Dict = {
   'settings.tabs.household': 'Hushåll',
   'settings.tabs.categories': 'Kategorier',
   'settings.tabs.locations': 'Platser',
+  'settings.tabs.tags': 'Taggar',
   'settings.yourHouseholds': 'Dina hushåll',
   'settings.owner': 'ägare',
   'settings.member': 'medlem',
@@ -356,6 +372,20 @@ const sv: Dict = {
   'pwa.updateBody': 'En ny version är klar.',
   'pwa.updateAction': 'Ladda om',
   'pwa.updateDismiss': 'Senare',
+
+  'settings.addTag': 'Lägg till tagg',
+  'settings.tagName': 'Taggnamn',
+  'settings.noTags': 'Inga taggar ännu.',
+  'settings.deleteTagTitle': 'Ta bort tagg "{name}"?',
+  'settings.deleteTagAffected': '{count} föremål förlorar denna tagg.',
+  'settings.failedAddTag': 'Kunde inte lägga till tagg',
+  'settings.failedDeleteTag': 'Kunde inte ta bort tagg',
+  'settings.failedUpdateTag': 'Kunde inte uppdatera tagg',
+
+  'addItem.tags': 'Taggar',
+
+  'tags.searchOrCreate': 'Sök eller skapa en tagg',
+  'tags.create': 'Skapa "{name}"',
 
   'about.tab': 'Om',
   'about.bio': 'Mitt namn är Roland Bengtsson. Jag kommer ursprungligen från Sverige men bor i Finland.',
@@ -457,6 +487,7 @@ const fi: Dict = {
   'settings.tabs.household': 'Talous',
   'settings.tabs.categories': 'Kategoriat',
   'settings.tabs.locations': 'Sijainnit',
+  'settings.tabs.tags': 'Tagit',
   'settings.yourHouseholds': 'Taloutesi',
   'settings.owner': 'omistaja',
   'settings.member': 'jäsen',
@@ -532,6 +563,20 @@ const fi: Dict = {
   'pwa.updateBody': 'Uusi versio on valmis.',
   'pwa.updateAction': 'Lataa uudelleen',
   'pwa.updateDismiss': 'Myöhemmin',
+
+  'settings.addTag': 'Lisää tagi',
+  'settings.tagName': 'Tagin nimi',
+  'settings.noTags': 'Ei tageja vielä.',
+  'settings.deleteTagTitle': 'Poista tagi "{name}"?',
+  'settings.deleteTagAffected': '{count} esinettä menettää tämän tagin.',
+  'settings.failedAddTag': 'Tagin lisääminen epäonnistui',
+  'settings.failedDeleteTag': 'Tagin poisto epäonnistui',
+  'settings.failedUpdateTag': 'Tagin päivitys epäonnistui',
+
+  'addItem.tags': 'Tagit',
+
+  'tags.searchOrCreate': 'Etsi tai luo tagi',
+  'tags.create': 'Luo "{name}"',
 
   'about.tab': 'Tietoja',
   'about.bio': 'Nimeni on Roland Bengtsson. Olen alun perin Ruotsista, mutta asun Suomessa.',
@@ -633,6 +678,7 @@ const de: Dict = {
   'settings.tabs.household': 'Haushalt',
   'settings.tabs.categories': 'Kategorien',
   'settings.tabs.locations': 'Orte',
+  'settings.tabs.tags': 'Tags',
   'settings.yourHouseholds': 'Deine Haushalte',
   'settings.owner': 'Besitzer',
   'settings.member': 'Mitglied',
@@ -708,6 +754,20 @@ const de: Dict = {
   'pwa.updateBody': 'Eine neue Version ist bereit.',
   'pwa.updateAction': 'Neu laden',
   'pwa.updateDismiss': 'Später',
+
+  'settings.addTag': 'Tag hinzufügen',
+  'settings.tagName': 'Tag-Name',
+  'settings.noTags': 'Noch keine Tags.',
+  'settings.deleteTagTitle': 'Tag "{name}" löschen?',
+  'settings.deleteTagAffected': '{count} Objekte verlieren diesen Tag.',
+  'settings.failedAddTag': 'Tag konnte nicht hinzugefügt werden',
+  'settings.failedDeleteTag': 'Tag konnte nicht gelöscht werden',
+  'settings.failedUpdateTag': 'Tag konnte nicht aktualisiert werden',
+
+  'addItem.tags': 'Tags',
+
+  'tags.searchOrCreate': 'Tag suchen oder anlegen',
+  'tags.create': '"{name}" anlegen',
 
   'about.tab': 'Über',
   'about.bio': 'Mein Name ist Roland Bengtsson. Ich komme ursprünglich aus Schweden, lebe aber in Finnland.',
@@ -809,6 +869,7 @@ const fr: Dict = {
   'settings.tabs.household': 'Foyer',
   'settings.tabs.categories': 'Catégories',
   'settings.tabs.locations': 'Emplacements',
+  'settings.tabs.tags': 'Étiquettes',
   'settings.yourHouseholds': 'Vos foyers',
   'settings.owner': 'propriétaire',
   'settings.member': 'membre',
@@ -884,6 +945,20 @@ const fr: Dict = {
   'pwa.updateBody': 'Une nouvelle version est prête.',
   'pwa.updateAction': 'Recharger',
   'pwa.updateDismiss': 'Plus tard',
+
+  'settings.addTag': 'Ajouter une étiquette',
+  'settings.tagName': 'Nom de l\'étiquette',
+  'settings.noTags': 'Aucune étiquette.',
+  'settings.deleteTagTitle': 'Supprimer l\'étiquette « {name} » ?',
+  'settings.deleteTagAffected': '{count} objets perdront cette étiquette.',
+  'settings.failedAddTag': 'Échec de l\'ajout de l\'étiquette',
+  'settings.failedDeleteTag': 'Échec de la suppression de l\'étiquette',
+  'settings.failedUpdateTag': 'Échec de la mise à jour de l\'étiquette',
+
+  'addItem.tags': 'Étiquettes',
+
+  'tags.searchOrCreate': 'Rechercher ou créer une étiquette',
+  'tags.create': 'Créer « {name} »',
 
   'about.tab': 'À propos',
   'about.bio': 'Je m\'appelle Roland Bengtsson. Je viens à l\'origine de Suède mais je vis en Finlande.',
@@ -985,6 +1060,7 @@ const it: Dict = {
   'settings.tabs.household': 'Casa',
   'settings.tabs.categories': 'Categorie',
   'settings.tabs.locations': 'Posizioni',
+  'settings.tabs.tags': 'Tag',
   'settings.yourHouseholds': 'Le tue case',
   'settings.owner': 'proprietario',
   'settings.member': 'membro',
@@ -1060,6 +1136,20 @@ const it: Dict = {
   'pwa.updateBody': 'Una nuova versione è pronta.',
   'pwa.updateAction': 'Ricarica',
   'pwa.updateDismiss': 'Più tardi',
+
+  'settings.addTag': 'Aggiungi tag',
+  'settings.tagName': 'Nome tag',
+  'settings.noTags': 'Nessun tag.',
+  'settings.deleteTagTitle': 'Eliminare il tag "{name}"?',
+  'settings.deleteTagAffected': '{count} oggetti perderanno questo tag.',
+  'settings.failedAddTag': 'Impossibile aggiungere il tag',
+  'settings.failedDeleteTag': 'Impossibile eliminare il tag',
+  'settings.failedUpdateTag': 'Impossibile aggiornare il tag',
+
+  'addItem.tags': 'Tag',
+
+  'tags.searchOrCreate': 'Cerca o crea un tag',
+  'tags.create': 'Crea "{name}"',
 
   'about.tab': 'Informazioni',
   'about.bio': 'Mi chiamo Roland Bengtsson. Sono originario della Svezia ma vivo in Finlandia.',
@@ -1161,6 +1251,7 @@ const es: Dict = {
   'settings.tabs.household': 'Hogar',
   'settings.tabs.categories': 'Categorías',
   'settings.tabs.locations': 'Ubicaciones',
+  'settings.tabs.tags': 'Etiquetas',
   'settings.yourHouseholds': 'Tus hogares',
   'settings.owner': 'propietario',
   'settings.member': 'miembro',
@@ -1236,6 +1327,20 @@ const es: Dict = {
   'pwa.updateBody': 'Una nueva versión está lista.',
   'pwa.updateAction': 'Recargar',
   'pwa.updateDismiss': 'Más tarde',
+
+  'settings.addTag': 'Añadir etiqueta',
+  'settings.tagName': 'Nombre de la etiqueta',
+  'settings.noTags': 'Sin etiquetas aún.',
+  'settings.deleteTagTitle': '¿Eliminar la etiqueta "{name}"?',
+  'settings.deleteTagAffected': '{count} objetos perderán esta etiqueta.',
+  'settings.failedAddTag': 'Error al añadir la etiqueta',
+  'settings.failedDeleteTag': 'Error al eliminar la etiqueta',
+  'settings.failedUpdateTag': 'Error al actualizar la etiqueta',
+
+  'addItem.tags': 'Etiquetas',
+
+  'tags.searchOrCreate': 'Buscar o crear una etiqueta',
+  'tags.create': 'Crear "{name}"',
 
   'about.tab': 'Acerca de',
   'about.bio': 'Me llamo Roland Bengtsson. Soy originario de Suecia pero vivo en Finlandia.',
@@ -1337,6 +1442,7 @@ const pt: Dict = {
   'settings.tabs.household': 'Lar',
   'settings.tabs.categories': 'Categorias',
   'settings.tabs.locations': 'Localizações',
+  'settings.tabs.tags': 'Etiquetas',
   'settings.yourHouseholds': 'Os teus lares',
   'settings.owner': 'proprietário',
   'settings.member': 'membro',
@@ -1412,6 +1518,20 @@ const pt: Dict = {
   'pwa.updateBody': 'Uma nova versão está pronta.',
   'pwa.updateAction': 'Recarregar',
   'pwa.updateDismiss': 'Mais tarde',
+
+  'settings.addTag': 'Adicionar etiqueta',
+  'settings.tagName': 'Nome da etiqueta',
+  'settings.noTags': 'Sem etiquetas ainda.',
+  'settings.deleteTagTitle': 'Eliminar etiqueta "{name}"?',
+  'settings.deleteTagAffected': '{count} itens perderão esta etiqueta.',
+  'settings.failedAddTag': 'Falha ao adicionar etiqueta',
+  'settings.failedDeleteTag': 'Falha ao eliminar etiqueta',
+  'settings.failedUpdateTag': 'Falha ao atualizar etiqueta',
+
+  'addItem.tags': 'Etiquetas',
+
+  'tags.searchOrCreate': 'Procurar ou criar uma etiqueta',
+  'tags.create': 'Criar "{name}"',
 
   'about.tab': 'Sobre',
   'about.bio': 'Chamo-me Roland Bengtsson. Sou originalmente da Suécia mas vivo na Finlândia.',

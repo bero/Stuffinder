@@ -1,5 +1,5 @@
 import { supabase, prefetchPhotoUrls } from './supabase';
-import { getAllItems, getCategories, getLocations } from './api';
+import { getAllItems, getCategories, getLocations, getTags } from './api';
 import { rowsToCsv, downloadBlob } from './csv';
 
 export type ExportPhase = 'loading' | 'photos' | 'zipping';
@@ -23,16 +23,24 @@ export async function exportHouseholdZip(
   onProgress?.({ phase: 'loading', current: 0, total: 1 });
 
   // Lazy-load JSZip so the dependency doesn't hit the main bundle.
-  const [{ default: JSZip }, items, categories, locations, photosResult] = await Promise.all([
-    import('jszip'),
-    getAllItems(householdId),
-    getCategories(householdId),
-    getLocations(householdId),
-    supabase.from('item_photos').select('*').eq('household_id', householdId).order('sort_order'),
-  ]);
+  const [{ default: JSZip }, items, categories, locations, tagList, photosResult, itemTagsResult] =
+    await Promise.all([
+      import('jszip'),
+      getAllItems(householdId),
+      getCategories(householdId),
+      getLocations(householdId),
+      getTags(householdId),
+      supabase.from('item_photos').select('*').eq('household_id', householdId).order('sort_order'),
+      supabase
+        .from('item_tags')
+        .select('item_id, tag_id, tags!inner(household_id)')
+        .eq('tags.household_id', householdId),
+    ]);
 
   if (photosResult.error) throw photosResult.error;
   const allPhotos = photosResult.data || [];
+  if (itemTagsResult.error) throw itemTagsResult.error;
+  const allItemTags = (itemTagsResult.data || []) as Array<{ item_id: string; tag_id: string }>;
 
   // Group photos by item_id for quick lookup.
   const photosByItem = new Map<string, Array<{ path: string; sort_order: number }>>();
@@ -42,21 +50,35 @@ export async function exportHouseholdZip(
     photosByItem.set(p.item_id, list);
   }
 
+  // Group tag ids by item_id.
+  const tagsByItem = new Map<string, string[]>();
+  for (const it of allItemTags) {
+    const list = tagsByItem.get(it.item_id) || [];
+    list.push(it.tag_id);
+    tagsByItem.set(it.item_id, list);
+  }
+
   onProgress?.({ phase: 'loading', current: 1, total: 1 });
 
   const zip = new JSZip();
 
-  // CSV: one row per item, PhotoFiles semicolon-joined for spreadsheet use.
+  // Map tag id → name for the CSV column.
+  const tagNameById = new Map(tagList.map((t) => [t.id, t.name]));
+
+  // CSV: one row per item, PhotoFiles + Tags semicolon-joined.
   const csv = rowsToCsv(
-    ['Name', 'Description', 'Category', 'Location', 'Added', 'Updated', 'PhotoFiles'],
+    ['Name', 'Description', 'Category', 'Location', 'Tags', 'Added', 'Updated', 'PhotoFiles'],
     items.map((i) => {
       const itemPhotos = photosByItem.get(i.id) || [];
       const photoRefs = itemPhotos.map((p) => `photos/${p.path.split('/').pop()}`).join('; ');
+      const tagIds = tagsByItem.get(i.id) || [];
+      const tagNames = tagIds.map((id) => tagNameById.get(id) || '').filter(Boolean).join('; ');
       return [
         i.name,
         i.description || '',
         i.category_name || '',
         i.location_full_path || '',
+        tagNames,
         new Date(i.created_at).toISOString(),
         new Date(i.updated_at).toISOString(),
         photoRefs,
@@ -65,18 +87,21 @@ export async function exportHouseholdZip(
   );
   zip.file('items.csv', '\uFEFF' + csv);
 
-  // JSON: full fidelity, photos as an array of archive-relative paths.
+  // JSON: full fidelity. photos = archive-relative paths; tag_ids = references
+  // into tags.json (original IDs; restored via a name-match map on import).
   const itemsJson = items.map((i) => {
     const itemPhotos = photosByItem.get(i.id) || [];
     return {
       ...i,
-      photo_path: undefined, // derived field from the view — don't include in backup
+      photo_path: undefined, // derived view field — don't include in backup
       photos: itemPhotos.map((p) => `photos/${p.path.split('/').pop()}`),
+      tag_ids: tagsByItem.get(i.id) || [],
     };
   });
   zip.file('items.json', JSON.stringify(itemsJson, null, 2));
   zip.file('categories.json', JSON.stringify(categories, null, 2));
   zip.file('locations.json', JSON.stringify(locations, null, 2));
+  zip.file('tags.json', JSON.stringify(tagList, null, 2));
   zip.file(
     'export-meta.json',
     JSON.stringify(
@@ -84,11 +109,12 @@ export async function exportHouseholdZip(
         household_id: householdId,
         household_name: householdName,
         exported_at: new Date().toISOString(),
-        version: 2, // photos are now an array per item
+        version: 3, // photos array + tags
         counts: {
           items: items.length,
           categories: categories.length,
           locations: locations.length,
+          tags: tagList.length,
           photos: allPhotos.length,
         },
       },

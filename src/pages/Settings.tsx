@@ -12,6 +12,11 @@ import {
   getItemsByLocation,
   reassignItemsCategory,
   reassignItemsLocation,
+  getTags,
+  createTag,
+  updateTag,
+  deleteTag,
+  countItemsWithTag,
   createInvite,
   getInvites,
   revokeInvite,
@@ -26,7 +31,7 @@ import { supabase } from '../lib/supabase';
 import { useT, t as tRaw, formatDate } from '../lib/i18n';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { EmojiPicker } from '../components/EmojiPicker';
-import type { Category, Location, HouseholdMembership, HouseholdInvite, ItemWithDetails } from '../types/database';
+import type { Category, Location, HouseholdMembership, HouseholdInvite, ItemWithDetails, Tag } from '../types/database';
 
 function PlusIcon() {
   return (
@@ -52,7 +57,7 @@ function PencilIcon() {
   );
 }
 
-type Tab = 'household' | 'categories' | 'locations' | 'about';
+type Tab = 'household' | 'categories' | 'locations' | 'tags' | 'about';
 
 const APP_VERSION = '1.0.0';
 
@@ -68,7 +73,13 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
   const [activeTab, setActiveTab] = useState<Tab>('household');
   const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Array<Location & { full_path: string }>>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newTagName, setNewTagName] = useState('');
+  const [addingTag, setAddingTag] = useState(false);
+  const [tagError, setTagError] = useState<string | null>(null);
+  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editingTagName, setEditingTagName] = useState('');
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
@@ -114,12 +125,14 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
     if (!activeHouseholdId) return;
     try {
       setLoading(true);
-      const [cats, locs] = await Promise.all([
+      const [cats, locs, t] = await Promise.all([
         getCategories(activeHouseholdId),
         getLocationsWithPath(activeHouseholdId),
+        getTags(activeHouseholdId),
       ]);
       setCategories(cats);
       setLocations(locs);
+      setTags(t);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -275,6 +288,68 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
       setDeleteTarget({ kind: 'location', id: loc.id, name: loc.full_path, affected });
     } catch {
       alert(tRaw('settings.failedDeleteLocation'));
+    }
+  }
+
+  async function handleAddTag(e: Event) {
+    e.preventDefault();
+    if (!activeHouseholdId || !newTagName.trim()) return;
+    try {
+      setAddingTag(true);
+      setTagError(null);
+      const created = await createTag(activeHouseholdId, newTagName);
+      setTags((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewTagName('');
+    } catch (err) {
+      setTagError(err instanceof Error ? err.message : t('settings.failedAddTag'));
+    } finally {
+      setAddingTag(false);
+    }
+  }
+
+  function startEditTag(tag: Tag) {
+    setEditingTagId(tag.id);
+    setEditingTagName(tag.name);
+    setTagError(null);
+  }
+
+  function cancelEditTag() {
+    setEditingTagId(null);
+    setEditingTagName('');
+    setTagError(null);
+  }
+
+  async function handleUpdateTag(e: Event) {
+    e.preventDefault();
+    if (!editingTagId || !editingTagName.trim()) return;
+    try {
+      setAddingTag(true);
+      setTagError(null);
+      const updated = await updateTag(editingTagId, editingTagName);
+      setTags((prev) =>
+        prev
+          .map((tag) => (tag.id === updated.id ? updated : tag))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      cancelEditTag();
+    } catch (err) {
+      setTagError(err instanceof Error ? err.message : t('settings.failedUpdateTag'));
+    } finally {
+      setAddingTag(false);
+    }
+  }
+
+  async function handleDeleteTag(tag: Tag) {
+    try {
+      const count = await countItemsWithTag(tag.id);
+      const title = tRaw('settings.deleteTagTitle', { name: tag.name });
+      const body =
+        count > 0 ? '\n\n' + tRaw('settings.deleteTagAffected', { count }) : '';
+      if (!confirm(title + body)) return;
+      await deleteTag(tag.id);
+      setTags((prev) => prev.filter((x) => x.id !== tag.id));
+    } catch {
+      alert(tRaw('settings.failedDeleteTag'));
     }
   }
 
@@ -488,10 +563,10 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
       </header>
 
       <div class="flex border-b border-slate-700 mb-4 overflow-x-auto">
-        {(['household', 'categories', 'locations', 'about'] as Tab[]).map((tab) => (
+        {(['household', 'categories', 'locations', 'tags', 'about'] as Tab[]).map((tab) => (
           <button
             key={tab}
-            onClick={() => { setActiveTab(tab); resetForm(); }}
+            onClick={() => { setActiveTab(tab); resetForm(); cancelEditTag(); }}
             class={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === tab
                 ? 'text-primary-400 border-primary-400'
@@ -627,7 +702,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
         </div>
       )}
 
-      {loading && (activeTab === 'categories' || activeTab === 'locations') ? (
+      {loading && (activeTab === 'categories' || activeTab === 'locations' || activeTab === 'tags') ? (
         <div class="flex justify-center py-12">
           <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent"></div>
         </div>
@@ -823,6 +898,75 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
               {t('settings.addLocation')}
             </button>
           )}
+        </div>
+      ) : activeTab === 'tags' ? (
+        <div class="space-y-3">
+          {tags.length === 0 && editingTagId === null && (
+            <p class="text-slate-500 text-sm">{t('settings.noTags')}</p>
+          )}
+          {tags.map((tag) =>
+            editingTagId === tag.id ? (
+              <form key={tag.id} onSubmit={handleUpdateTag} class="card space-y-3">
+                <input
+                  type="text"
+                  value={editingTagName}
+                  onInput={(e) => setEditingTagName((e.target as HTMLInputElement).value)}
+                  class="input"
+                  required
+                  autoFocus
+                />
+                {tagError && <p class="text-red-400 text-sm">{tagError}</p>}
+                <div class="flex gap-2">
+                  <button type="button" onClick={cancelEditTag} class="btn-secondary flex-1">{t('common.cancel')}</button>
+                  <button type="submit" disabled={addingTag} class="btn-primary flex-1">
+                    {addingTag ? t('common.saving') : t('common.save')}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div key={tag.id} class="card flex items-center justify-between">
+                <span class="font-medium text-slate-100">{tag.name}</span>
+                <div class="flex items-center gap-1">
+                  <button
+                    onClick={() => startEditTag(tag)}
+                    class="p-2 text-slate-400 hover:text-slate-200 transition-colors"
+                    aria-label={t('common.edit')}
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTag(tag)}
+                    class="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                    aria-label={t('common.delete')}
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
+              </div>
+            ),
+          )}
+
+          <form onSubmit={handleAddTag} class="card space-y-3">
+            <input
+              type="text"
+              value={newTagName}
+              onInput={(e) => setNewTagName((e.target as HTMLInputElement).value)}
+              placeholder={t('settings.tagName')}
+              class="input"
+              required
+            />
+            {tagError && editingTagId === null && <p class="text-red-400 text-sm">{tagError}</p>}
+            <button
+              type="submit"
+              disabled={addingTag || !newTagName.trim()}
+              class="btn-primary w-full"
+            >
+              <span class="flex items-center justify-center gap-2">
+                <PlusIcon />
+                {addingTag ? t('common.adding') : t('settings.addTag')}
+              </span>
+            </button>
+          </form>
         </div>
       ) : activeTab === 'about' ? (
         <div class="space-y-4">

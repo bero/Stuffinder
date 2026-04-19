@@ -69,6 +69,19 @@ export interface ItemPhoto {
   created_at: string;
 }
 
+export interface Tag {
+  id: string;
+  household_id: string;
+  name: string;
+  created_at: string;
+}
+
+// Embedded in ItemWithDetails.tags (via the jsonb aggregate).
+export interface TagRef {
+  id: string;
+  name: string;
+}
+
 export interface ItemWithDetails {
   id: string;
   household_id: string;
@@ -84,6 +97,7 @@ export interface ItemWithDetails {
   location_id: string | null;
   location_name: string | null;
   location_full_path: string | null;
+  tags: TagRef[];
 }
 
 export interface ItemFormData {

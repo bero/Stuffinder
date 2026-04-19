@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { getCategories, getLocations, getAllItems } from './api';
+import { getCategories, getLocations, getAllItems, getTags } from './api';
 
 export type ImportMode = 'replace' | 'merge';
 
@@ -35,7 +35,7 @@ interface ExportMeta {
   household_name?: string;
 }
 
-const SUPPORTED_VERSIONS = [1, 2];
+const SUPPORTED_VERSIONS = [1, 2, 3];
 
 interface ExportCategory {
   id: string;
@@ -62,9 +62,16 @@ interface ExportItem {
   // v1 exports have a single photo_path; v2+ exports have photos: string[].
   photo_path?: string | null;
   photos?: string[];
+  // v3+ exports include tag_ids referencing tags.json.
+  tag_ids?: string[];
   category_id: string | null;
   location_id: string | null;
   created_at?: string;
+}
+
+interface ExportTag {
+  id: string;
+  name: string;
 }
 
 // Import a Stuffinder backup zip.
@@ -110,13 +117,22 @@ export async function importHouseholdZip(
   const locations = JSON.parse(await locFile.async('string')) as ExportLocation[];
   const items = JSON.parse(await itemFile.async('string')) as ExportItem[];
 
+  // Tags are optional (older backups don't include them).
+  const tagsFile = zip.file('tags.json');
+  const tags: ExportTag[] = tagsFile ? JSON.parse(await tagsFile.async('string')) : [];
+
   onProgress?.({ phase: 'reading', current: 1, total: 1 });
 
   // --- clear existing data (replace mode only) ---
   if (mode === 'replace') {
     onProgress?.({ phase: 'clearing', current: 0, total: 1 });
     {
+      // Deleting items cascades to item_photos and item_tags.
       const { error } = await supabase.from('items').delete().eq('household_id', householdId);
+      if (error) throw error;
+    }
+    {
+      const { error } = await supabase.from('tags').delete().eq('household_id', householdId);
       if (error) throw error;
     }
     {
@@ -225,6 +241,31 @@ export async function importHouseholdZip(
         onProgress?.({ phase: 'locations', current: locProcessed, total: locations.length });
       }
       break;
+    }
+  }
+
+  // --- tags: match existing by name in merge; always insert in replace ---
+  const tagIdMap = new Map<string, string>();
+  if (tags.length > 0) {
+    const existingTagsByName = new Map<string, string>();
+    if (mode === 'merge') {
+      const existing = await getTags(householdId);
+      for (const tg of existing) existingTagsByName.set(tg.name.toLowerCase(), tg.id);
+    }
+    for (const tg of tags) {
+      const reuseId = mode === 'merge' ? existingTagsByName.get(tg.name.toLowerCase()) : undefined;
+      if (reuseId) {
+        tagIdMap.set(tg.id, reuseId);
+      } else {
+        const { data, error } = await supabase
+          .from('tags')
+          .insert({ household_id: householdId, name: tg.name })
+          .select('id')
+          .single();
+        if (error) throw error;
+        tagIdMap.set(tg.id, data.id);
+        existingTagsByName.set(tg.name.toLowerCase(), data.id);
+      }
     }
   }
 
@@ -340,6 +381,20 @@ export async function importHouseholdZip(
       }));
       const { error: photoErr } = await supabase.from('item_photos').insert(photoRows);
       if (photoErr) throw photoErr;
+    }
+
+    // Tag associations — remap old tag ids to new ones.
+    const remappedTagIds = (it.tag_ids || [])
+      .map((oldId) => tagIdMap.get(oldId))
+      .filter((id): id is string => !!id);
+    if (remappedTagIds.length > 0) {
+      // For merge-mode matched items, replace existing associations.
+      if (matchId) {
+        await supabase.from('item_tags').delete().eq('item_id', itemId);
+      }
+      const tagRows = remappedTagIds.map((tag_id) => ({ item_id: itemId, tag_id }));
+      const { error: tagErr } = await supabase.from('item_tags').insert(tagRows);
+      if (tagErr) throw tagErr;
     }
 
     onProgress?.({ phase: 'items', current: i + 1, total: items.length });

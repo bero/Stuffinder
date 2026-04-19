@@ -9,11 +9,14 @@ import {
   getItemPhotos,
   addItemPhoto,
   deleteItemPhoto,
+  getTags,
+  setItemTags,
 } from '../lib/api';
 import { prefetchPhotoUrls } from '../lib/supabase';
 import { useT, formatDate } from '../lib/i18n';
 import { QuickCreateCategory, QuickCreateLocation } from '../components/QuickCreate';
-import type { ItemWithDetails, ItemPhoto, Category, Location } from '../types/database';
+import { TagPicker } from '../components/TagPicker';
+import type { ItemWithDetails, ItemPhoto, Category, Location, Tag, TagRef } from '../types/database';
 
 function BackIcon() {
   return (
@@ -108,6 +111,8 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [showNewLocation, setShowNewLocation] = useState(false);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<TagRef[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLDivElement>(null);
@@ -190,14 +195,18 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
     setError(null);
     setEditing(true);
 
+    setSelectedTags(item.tags ? [...item.tags] : []);
+
     try {
       setOptionsLoading(true);
-      const [cats, locs] = await Promise.all([
+      const [cats, locs, tagList] = await Promise.all([
         getCategories(activeHouseholdId),
         getLocationsWithPath(activeHouseholdId),
+        getTags(activeHouseholdId),
       ]);
       setCategories(cats);
       setLocations(locs);
+      setAllTags(tagList);
     } catch (err) {
       console.error('Failed to load options:', err);
     } finally {
@@ -275,6 +284,9 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
         if (sp.kind !== 'new' || !sp.file) continue;
         await addItemPhoto(item.id, activeHouseholdId, sp.file, sortIndex++);
       }
+
+      // 3b. Commit tag selection.
+      await setItemTags(item.id, selectedTags.map((t) => t.id));
 
       // 4. Refresh state from server (fresh signed URLs for new photos).
       const [refreshed, freshPhotos] = await Promise.all([
@@ -456,6 +468,25 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               </div>
             )}
 
+            {item.tags && item.tags.length > 0 && (
+              <div class="flex items-start gap-3">
+                <span class="text-2xl">🏷️</span>
+                <div class="flex-1">
+                  <p class="text-sm text-slate-400">{t('addItem.tags')}</p>
+                  <div class="flex flex-wrap gap-2 mt-1">
+                    {item.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        class="bg-primary-900/50 border border-primary-700 text-primary-200 rounded-full px-2.5 py-0.5 text-sm"
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div class="pt-4 border-t border-slate-700 text-sm text-slate-500">
               <p>{t('itemDetail.added', { date: formatDate(item.created_at) })}</p>
               {item.updated_at !== item.created_at && (
@@ -606,6 +637,19 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               class="input resize-none"
             />
           </div>
+
+          {activeHouseholdId && (
+            <div>
+              <label class="input-label">{t('addItem.tags')}</label>
+              <TagPicker
+                householdId={activeHouseholdId}
+                selected={selectedTags}
+                allTags={allTags}
+                onChange={setSelectedTags}
+                onTagCreated={(tag) => setAllTags((prev) => [...prev, tag].sort((a, b) => a.name.localeCompare(b.name)))}
+              />
+            </div>
+          )}
 
           {error && (
             <div class="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">

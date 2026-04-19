@@ -10,6 +10,7 @@ import type {
   CategoryFormData,
   LocationFormData,
   HouseholdInvite,
+  Tag,
 } from '../types/database';
 
 // ============ Households ============
@@ -234,6 +235,68 @@ export async function reorderItemPhotos(photoIds: string[]): Promise<void> {
       supabase.from('item_photos').update({ sort_order: index }).eq('id', id),
     ),
   );
+}
+
+// ============ Tags ============
+
+export async function getTags(householdId: string): Promise<Tag[]> {
+  const { data, error } = await supabase
+    .from('tags')
+    .select('*')
+    .eq('household_id', householdId)
+    .order('name', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createTag(householdId: string, name: string): Promise<Tag> {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Tag name required');
+  const { data, error } = await supabase
+    .from('tags')
+    .insert({ household_id: householdId, name: trimmed })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateTag(id: string, name: string): Promise<Tag> {
+  const { data, error } = await supabase
+    .from('tags')
+    .update({ name: name.trim() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteTag(id: string): Promise<void> {
+  const { error } = await supabase.from('tags').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// Count of items currently using a given tag.
+export async function countItemsWithTag(tagId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('item_tags')
+    .select('*', { count: 'exact', head: true })
+    .eq('tag_id', tagId);
+  if (error) throw error;
+  return count || 0;
+}
+
+// Replace the full set of tags for an item. Deletes rows that aren't in
+// the supplied list and inserts the missing ones.
+export async function setItemTags(itemId: string, tagIds: string[]): Promise<void> {
+  // Remove everything, then insert desired set. Simple and idempotent.
+  const { error: delErr } = await supabase.from('item_tags').delete().eq('item_id', itemId);
+  if (delErr) throw delErr;
+  if (tagIds.length === 0) return;
+  const rows = tagIds.map((tag_id) => ({ item_id: itemId, tag_id }));
+  const { error: insErr } = await supabase.from('item_tags').insert(rows);
+  if (insErr) throw insErr;
 }
 
 // ============ Categories ============

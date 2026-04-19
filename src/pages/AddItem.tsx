@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { route } from 'preact-router';
-import { createItem, addItemPhoto, deleteItem, getCategories, getLocationsWithPath } from '../lib/api';
+import { createItem, addItemPhoto, deleteItem, getCategories, getLocationsWithPath, getTags, setItemTags } from '../lib/api';
 import { useT } from '../lib/i18n';
 import { QuickCreateCategory, QuickCreateLocation } from '../components/QuickCreate';
-import type { Category, Location } from '../types/database';
+import { TagPicker } from '../components/TagPicker';
+import type { Category, Location, Tag, TagRef } from '../types/database';
 
 function CameraIcon() {
   return (
@@ -43,6 +44,8 @@ export function AddItem({ activeHouseholdId }: Props) {
   const [photos, setPhotos] = useState<Array<{ file: File; preview: string }>>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Array<Location & { full_path: string }>>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<TagRef[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNewCategory, setShowNewCategory] = useState(false);
@@ -54,12 +57,14 @@ export function AddItem({ activeHouseholdId }: Props) {
     if (!activeHouseholdId) return;
     async function loadData() {
       try {
-        const [cats, locs] = await Promise.all([
+        const [cats, locs, tagList] = await Promise.all([
           getCategories(activeHouseholdId!),
           getLocationsWithPath(activeHouseholdId!),
+          getTags(activeHouseholdId!),
         ]);
         setCategories(cats);
         setLocations(locs);
+        setAllTags(tagList);
       } catch (err) {
         console.error('Failed to load data:', err);
       }
@@ -120,6 +125,10 @@ export function AddItem({ activeHouseholdId }: Props) {
 
       for (let i = 0; i < photos.length; i++) {
         await addItemPhoto(item.id, activeHouseholdId, photos[i].file, i);
+      }
+
+      if (selectedTags.length > 0) {
+        await setItemTags(item.id, selectedTags.map((t) => t.id));
       }
 
       route('/');
@@ -281,6 +290,20 @@ export function AddItem({ activeHouseholdId }: Props) {
             class="input resize-none"
           />
         </div>
+
+        {/* Tags */}
+        {activeHouseholdId && (
+          <div>
+            <label class="input-label">{t('addItem.tags')}</label>
+            <TagPicker
+              householdId={activeHouseholdId}
+              selected={selectedTags}
+              allTags={allTags}
+              onChange={setSelectedTags}
+              onTagCreated={(tag) => setAllTags((prev) => [...prev, tag].sort((a, b) => a.name.localeCompare(b.name)))}
+            />
+          </div>
+        )}
 
         {/* Error message */}
         {error && (
