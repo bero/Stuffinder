@@ -17,6 +17,7 @@ import { signOut } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { useT, t as tRaw, formatDate } from '../lib/i18n';
 import { LanguagePicker } from '../components/LanguagePicker';
+import { EmojiPicker } from '../components/EmojiPicker';
 import type { Category, Location, HouseholdMembership, HouseholdInvite } from '../types/database';
 
 function PlusIcon() {
@@ -413,14 +414,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
             editingId === cat.id ? (
               <form key={cat.id} onSubmit={handleUpdateCategory} class="card space-y-3">
                 <div class="flex gap-3">
-                  <input
-                    type="text"
-                    value={editIcon}
-                    onInput={(e) => setEditIcon((e.target as HTMLInputElement).value)}
-                    placeholder="📦"
-                    class="input w-16 text-center text-xl"
-                    maxLength={2}
-                  />
+                  <EmojiPicker value={editIcon} onChange={setEditIcon} placeholder="📦" />
                   <input
                     type="text"
                     value={editName}
@@ -471,14 +465,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
           {showAddForm ? (
             <form onSubmit={handleAddCategory} class="card space-y-3">
               <div class="flex gap-3">
-                <input
-                  type="text"
-                  value={newIcon}
-                  onInput={(e) => setNewIcon((e.target as HTMLInputElement).value)}
-                  placeholder="📦"
-                  class="input w-16 text-center text-xl"
-                  maxLength={2}
-                />
+                <EmojiPicker value={newIcon} onChange={setNewIcon} placeholder="📦" />
                 <input
                   type="text"
                   value={newName}
@@ -512,14 +499,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
             editingId === loc.id ? (
               <form key={loc.id} onSubmit={handleUpdateLocation} class="card space-y-3">
                 <div class="flex gap-3">
-                  <input
-                    type="text"
-                    value={editIcon}
-                    onInput={(e) => setEditIcon((e.target as HTMLInputElement).value)}
-                    placeholder="📍"
-                    class="input w-16 text-center text-xl"
-                    maxLength={2}
-                  />
+                  <EmojiPicker value={editIcon} onChange={setEditIcon} placeholder="📍" />
                   <input
                     type="text"
                     value={editName}
@@ -581,14 +561,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
           {showAddForm ? (
             <form onSubmit={handleAddLocation} class="card space-y-3">
               <div class="flex gap-3">
-                <input
-                  type="text"
-                  value={newIcon}
-                  onInput={(e) => setNewIcon((e.target as HTMLInputElement).value)}
-                  placeholder="📍"
-                  class="input w-16 text-center text-xl"
-                  maxLength={2}
-                />
+                <EmojiPicker value={newIcon} onChange={setNewIcon} placeholder="📍" />
                 <input
                   type="text"
                   value={newName}
