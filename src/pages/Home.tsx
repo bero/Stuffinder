@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { route } from 'preact-router';
-import { searchItems, getItems } from '../lib/api';
-import { getPhotoUrl } from '../lib/supabase';
+import { searchItems, getItems, countItems, ITEMS_PAGE_SIZE } from '../lib/api';
+import { prefetchPhotoUrls } from '../lib/supabase';
 import type { ItemWithDetails } from '../types/database';
 
 function SearchIcon() {
@@ -12,17 +12,7 @@ function SearchIcon() {
   );
 }
 
-function ItemCard({ item }: { item: ItemWithDetails }) {
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    getPhotoUrl(item.photo_path).then((url) => {
-      if (!cancelled) setPhotoUrl(url);
-    });
-    return () => { cancelled = true; };
-  }, [item.photo_path]);
-
+function ItemCard({ item, photoUrl }: { item: ItemWithDetails; photoUrl: string | null }) {
   return (
     <button
       onClick={() => route(`/item/${item.id}`)}
@@ -93,14 +83,20 @@ export function Home({ activeHouseholdId }: Props) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(new Map());
+  const [totalCount, setTotalCount] = useState<number | null>(null);
 
   async function loadItems() {
     if (!activeHouseholdId) return;
     try {
       setLoading(true);
       setError(null);
-      const data = await getItems(activeHouseholdId);
+      const [data, total] = await Promise.all([
+        getItems(activeHouseholdId),
+        countItems(activeHouseholdId),
+      ]);
       setItems(data);
+      setTotalCount(total);
     } catch (err) {
       setError('Failed to load items');
       console.error(err);
@@ -130,6 +126,26 @@ export function Home({ activeHouseholdId }: Props) {
 
     return () => clearTimeout(timer);
   }, [searchQuery, activeHouseholdId]);
+
+  // Batch-sign photo URLs whenever the visible items change.
+  useEffect(() => {
+    let cancelled = false;
+    if (items.length === 0) {
+      setPhotoUrls(new Map());
+      return;
+    }
+    const paths = items.map(i => i.photo_path).filter((p): p is string => !!p);
+    prefetchPhotoUrls(paths).then((map) => {
+      if (!cancelled) setPhotoUrls(map);
+    });
+    return () => { cancelled = true; };
+  }, [items]);
+
+  const isTruncated =
+    !searchQuery.trim() &&
+    totalCount !== null &&
+    totalCount > ITEMS_PAGE_SIZE &&
+    items.length >= ITEMS_PAGE_SIZE;
 
   return (
     <div class="px-4 pt-6">
@@ -165,11 +181,22 @@ export function Home({ activeHouseholdId }: Props) {
       ) : items.length === 0 ? (
         <EmptyState hasSearch={searchQuery.trim().length > 0} />
       ) : (
-        <div class="space-y-3">
-          {items.map((item) => (
-            <ItemCard key={item.id} item={item} />
-          ))}
-        </div>
+        <>
+          <div class="space-y-3">
+            {items.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                photoUrl={item.photo_path ? photoUrls.get(item.photo_path) ?? null : null}
+              />
+            ))}
+          </div>
+          {isTruncated && (
+            <p class="text-center text-sm text-slate-500 py-6">
+              Showing the {ITEMS_PAGE_SIZE} most recent of {totalCount}. Use search to find older items.
+            </p>
+          )}
+        </>
       )}
     </div>
   );

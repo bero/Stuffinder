@@ -59,23 +59,39 @@ export async function leaveHousehold(householdId: string, userId: string): Promi
 
 // ============ Items ============
 
-export async function getItems(householdId: string): Promise<ItemWithDetails[]> {
+export const ITEMS_PAGE_SIZE = 100;
+
+export async function getItems(householdId: string, limit = ITEMS_PAGE_SIZE): Promise<ItemWithDetails[]> {
   const { data, error } = await supabase
     .from('items_with_details')
     .select('*')
     .eq('household_id', householdId)
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .limit(limit);
 
   if (error) throw error;
   return data || [];
 }
 
-export async function searchItems(householdId: string, query: string): Promise<ItemWithDetails[]> {
-  if (!query.trim()) return getItems(householdId);
-  const { data, error } = await supabase
-    .rpc('search_items', { search_query: query });
+export async function countItems(householdId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('items')
+    .select('*', { count: 'exact', head: true })
+    .eq('household_id', householdId);
+
   if (error) throw error;
-  // RLS filters to member households already, but in case the user is in multiple we scope further.
+  return count || 0;
+}
+
+export async function searchItems(householdId: string, query: string, limit = ITEMS_PAGE_SIZE): Promise<ItemWithDetails[]> {
+  if (!query.trim()) return getItems(householdId, limit);
+  // LIMIT is applied server-side via the RPC's returned SETOF; RLS already
+  // scopes rows to households the user is a member of. The multi-household
+  // case (rare) still gets a defensive client-side filter.
+  const { data, error } = await supabase
+    .rpc('search_items', { search_query: query })
+    .limit(limit);
+  if (error) throw error;
   return (data || []).filter((row: ItemWithDetails) => row.household_id === householdId);
 }
 
