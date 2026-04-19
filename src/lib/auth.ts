@@ -85,6 +85,7 @@ export function useActiveHousehold(memberships: HouseholdMembership[]) {
   }, [memberships]);
 
   function select(id: string) {
+    if (id !== activeId) clearPhotoUrlCache();
     localStorage.setItem(ACTIVE_KEY, id);
     setActiveId(id);
   }

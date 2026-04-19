@@ -7,6 +7,7 @@ import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
 import { Onboarding } from './pages/Onboarding';
 import { NavBar } from './components/NavBar';
+import { UpdatePrompt } from './components/UpdatePrompt';
 import { useSession, useMemberships, useActiveHousehold } from './lib/auth';
 
 function FullscreenLoader() {
@@ -24,10 +25,13 @@ export function App() {
 
   if (!session) {
     return (
-      <Router>
-        <Route path="/signup" component={Signup} />
-        <Route default component={Login} />
-      </Router>
+      <>
+        <Router>
+          <Route path="/signup" component={Signup} />
+          <Route default component={Login} />
+        </Router>
+        <UpdatePrompt />
+      </>
     );
   }
 
@@ -64,6 +68,7 @@ function AuthedApp({ session }: { session: import('@supabase/supabase-js').Sessi
         </Router>
       </main>
       <NavBar />
+      <UpdatePrompt />
     </div>
   );
 }

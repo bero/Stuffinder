@@ -143,6 +143,11 @@ const en: Dict = {
 
   'lang.picker': 'Language',
 
+  'pwa.updateTitle': 'Update available',
+  'pwa.updateBody': 'A new version is ready.',
+  'pwa.updateAction': 'Reload',
+  'pwa.updateDismiss': 'Later',
+
   'about.tab': 'About',
   'about.bio': 'My name is Roland Bengtsson. I am originally from Sweden but live in Finland.',
   'about.motivation': 'I built Stuffinder for my own needs.',
@@ -280,6 +285,11 @@ const sv: Dict = {
   'nav.settings': 'Inställningar',
 
   'lang.picker': 'Språk',
+
+  'pwa.updateTitle': 'Uppdatering tillgänglig',
+  'pwa.updateBody': 'En ny version är klar.',
+  'pwa.updateAction': 'Ladda om',
+  'pwa.updateDismiss': 'Senare',
 
   'about.tab': 'Om',
   'about.bio': 'Mitt namn är Roland Bengtsson. Jag kommer ursprungligen från Sverige men bor i Finland.',
@@ -419,6 +429,11 @@ const fi: Dict = {
 
   'lang.picker': 'Kieli',
 
+  'pwa.updateTitle': 'Päivitys saatavilla',
+  'pwa.updateBody': 'Uusi versio on valmis.',
+  'pwa.updateAction': 'Lataa uudelleen',
+  'pwa.updateDismiss': 'Myöhemmin',
+
   'about.tab': 'Tietoja',
   'about.bio': 'Nimeni on Roland Bengtsson. Olen alun perin Ruotsista, mutta asun Suomessa.',
   'about.motivation': 'Kehitin Stuffinderin omiin tarpeisiini.',
@@ -556,6 +571,11 @@ const de: Dict = {
   'nav.settings': 'Einstellungen',
 
   'lang.picker': 'Sprache',
+
+  'pwa.updateTitle': 'Update verfügbar',
+  'pwa.updateBody': 'Eine neue Version ist bereit.',
+  'pwa.updateAction': 'Neu laden',
+  'pwa.updateDismiss': 'Später',
 
   'about.tab': 'Über',
   'about.bio': 'Mein Name ist Roland Bengtsson. Ich komme ursprünglich aus Schweden, lebe aber in Finnland.',
@@ -695,6 +715,11 @@ const fr: Dict = {
 
   'lang.picker': 'Langue',
 
+  'pwa.updateTitle': 'Mise à jour disponible',
+  'pwa.updateBody': 'Une nouvelle version est prête.',
+  'pwa.updateAction': 'Recharger',
+  'pwa.updateDismiss': 'Plus tard',
+
   'about.tab': 'À propos',
   'about.bio': 'Je m\'appelle Roland Bengtsson. Je viens à l\'origine de Suède mais je vis en Finlande.',
   'about.motivation': 'J\'ai développé Stuffinder pour mes propres besoins.',
@@ -832,6 +857,11 @@ const it: Dict = {
   'nav.settings': 'Impostazioni',
 
   'lang.picker': 'Lingua',
+
+  'pwa.updateTitle': 'Aggiornamento disponibile',
+  'pwa.updateBody': 'Una nuova versione è pronta.',
+  'pwa.updateAction': 'Ricarica',
+  'pwa.updateDismiss': 'Più tardi',
 
   'about.tab': 'Informazioni',
   'about.bio': 'Mi chiamo Roland Bengtsson. Sono originario della Svezia ma vivo in Finlandia.',
@@ -971,6 +1001,11 @@ const es: Dict = {
 
   'lang.picker': 'Idioma',
 
+  'pwa.updateTitle': 'Actualización disponible',
+  'pwa.updateBody': 'Una nueva versión está lista.',
+  'pwa.updateAction': 'Recargar',
+  'pwa.updateDismiss': 'Más tarde',
+
   'about.tab': 'Acerca de',
   'about.bio': 'Me llamo Roland Bengtsson. Soy originario de Suecia pero vivo en Finlandia.',
   'about.motivation': 'Desarrollé Stuffinder para mis propias necesidades.',
@@ -1108,6 +1143,11 @@ const pt: Dict = {
   'nav.settings': 'Definições',
 
   'lang.picker': 'Idioma',
+
+  'pwa.updateTitle': 'Atualização disponível',
+  'pwa.updateBody': 'Uma nova versão está pronta.',
+  'pwa.updateAction': 'Recarregar',
+  'pwa.updateDismiss': 'Mais tarde',
 
   'about.tab': 'Sobre',
   'about.bio': 'Chamo-me Roland Bengtsson. Sou originalmente da Suécia mas vivo na Finlândia.',
