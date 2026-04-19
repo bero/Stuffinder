@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import { route } from 'preact-router';
 import { createItem, getCategories, getLocationsWithPath } from '../lib/api';
 import { useT } from '../lib/i18n';
+import { QuickCreateCategory, QuickCreateLocation } from '../components/QuickCreate';
 import type { Category, Location } from '../types/database';
 
 function CameraIcon() {
@@ -37,6 +38,8 @@ export function AddItem({ activeHouseholdId }: Props) {
   const [locations, setLocations] = useState<Array<Location & { full_path: string }>>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [showNewLocation, setShowNewLocation] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -194,37 +197,59 @@ export function AddItem({ activeHouseholdId }: Props) {
         {/* Location */}
         <div>
           <label class="input-label" for="location">{t('addItem.location')}</label>
-          <select
-            id="location"
-            value={locationId}
-            onChange={(e) => setLocationId((e.target as HTMLSelectElement).value)}
-            class="select"
-          >
-            <option value="">{t('addItem.selectLocation')}</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.icon} {loc.full_path}
-              </option>
-            ))}
-          </select>
+          <div class="flex gap-2">
+            <select
+              id="location"
+              value={locationId}
+              onChange={(e) => setLocationId((e.target as HTMLSelectElement).value)}
+              class="select flex-1"
+            >
+              <option value="">{t('addItem.selectLocation')}</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.icon} {loc.full_path}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setShowNewLocation(true)}
+              class="btn-secondary px-3"
+              aria-label={t('settings.addLocation')}
+              title={t('settings.addLocation')}
+            >
+              +
+            </button>
+          </div>
         </div>
 
         {/* Category */}
         <div>
           <label class="input-label" for="category">{t('addItem.category')}</label>
-          <select
-            id="category"
-            value={categoryId}
-            onChange={(e) => setCategoryId((e.target as HTMLSelectElement).value)}
-            class="select"
-          >
-            <option value="">{t('addItem.selectCategory')}</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.icon} {cat.name}
-              </option>
-            ))}
-          </select>
+          <div class="flex gap-2">
+            <select
+              id="category"
+              value={categoryId}
+              onChange={(e) => setCategoryId((e.target as HTMLSelectElement).value)}
+              class="select flex-1"
+            >
+              <option value="">{t('addItem.selectCategory')}</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.icon} {cat.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setShowNewCategory(true)}
+              class="btn-secondary px-3"
+              aria-label={t('settings.addCategory')}
+              title={t('settings.addCategory')}
+            >
+              +
+            </button>
+          </div>
         </div>
 
         {/* Description */}
@@ -263,6 +288,32 @@ export function AddItem({ activeHouseholdId }: Props) {
           )}
         </button>
       </form>
+
+      {showNewCategory && activeHouseholdId && (
+        <QuickCreateCategory
+          householdId={activeHouseholdId}
+          onCreated={(c) => {
+            setCategories((prev) => [...prev, c]);
+            setCategoryId(c.id);
+            setShowNewCategory(false);
+          }}
+          onClose={() => setShowNewCategory(false)}
+        />
+      )}
+      {showNewLocation && activeHouseholdId && (
+        <QuickCreateLocation
+          householdId={activeHouseholdId}
+          locations={locations}
+          onCreated={(l) => {
+            const parent = l.parent_id ? locations.find((x) => x.id === l.parent_id) : null;
+            const full_path = parent ? `${parent.full_path} > ${l.name}` : l.name;
+            setLocations((prev) => [...prev, { ...l, full_path }]);
+            setLocationId(l.id);
+            setShowNewLocation(false);
+          }}
+          onClose={() => setShowNewLocation(false)}
+        />
+      )}
     </div>
   );
 }

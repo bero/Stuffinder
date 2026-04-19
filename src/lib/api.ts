@@ -73,6 +73,28 @@ export async function getItems(householdId: string, limit = ITEMS_PAGE_SIZE): Pr
   return data || [];
 }
 
+// Fetch every item in a household, paginating in 1000-row chunks to bypass
+// PostgREST's default max-rows cap. Use for export, not the normal UI.
+export async function getAllItems(householdId: string): Promise<ItemWithDetails[]> {
+  const CHUNK = 1000;
+  const all: ItemWithDetails[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('items_with_details')
+      .select('*')
+      .eq('household_id', householdId)
+      .order('updated_at', { ascending: false })
+      .range(from, from + CHUNK - 1);
+    if (error) throw error;
+    const batch = data || [];
+    all.push(...batch);
+    if (batch.length < CHUNK) break;
+    from += CHUNK;
+  }
+  return all;
+}
+
 export async function countItems(householdId: string): Promise<number> {
   const { count, error } = await supabase
     .from('items')
@@ -243,6 +265,30 @@ export async function deleteCategory(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function getItemsByCategory(householdId: string, categoryId: string): Promise<ItemWithDetails[]> {
+  const { data, error } = await supabase
+    .from('items_with_details')
+    .select('*')
+    .eq('household_id', householdId)
+    .eq('category_id', categoryId)
+    .order('name', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function reassignItemsCategory(
+  householdId: string,
+  oldCategoryId: string,
+  newCategoryId: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('items')
+    .update({ category_id: newCategoryId })
+    .eq('household_id', householdId)
+    .eq('category_id', oldCategoryId);
+  if (error) throw error;
+}
+
 // ============ Locations ============
 
 export async function getLocations(householdId: string): Promise<Location[]> {
@@ -315,5 +361,29 @@ export async function deleteLocation(id: string): Promise<void> {
     .delete()
     .eq('id', id);
 
+  if (error) throw error;
+}
+
+export async function getItemsByLocation(householdId: string, locationId: string): Promise<ItemWithDetails[]> {
+  const { data, error } = await supabase
+    .from('items_with_details')
+    .select('*')
+    .eq('household_id', householdId)
+    .eq('location_id', locationId)
+    .order('name', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function reassignItemsLocation(
+  householdId: string,
+  oldLocationId: string,
+  newLocationId: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from('items')
+    .update({ location_id: newLocationId })
+    .eq('household_id', householdId)
+    .eq('location_id', oldLocationId);
   if (error) throw error;
 }

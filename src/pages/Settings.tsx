@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import {
   getCategories,
   getLocationsWithPath,
@@ -8,17 +8,25 @@ import {
   updateLocation,
   deleteCategory,
   deleteLocation,
+  getItemsByCategory,
+  getItemsByLocation,
+  reassignItemsCategory,
+  reassignItemsLocation,
   createInvite,
   getInvites,
   revokeInvite,
   leaveHousehold,
+  getAllItems,
 } from '../lib/api';
+import { rowsToCsv, downloadFile } from '../lib/csv';
+import { exportHouseholdZip, type ExportProgress } from '../lib/export';
+import { importHouseholdZip, type ImportMode, type ImportProgress, type ImportResult } from '../lib/import';
 import { signOut } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { useT, t as tRaw, formatDate } from '../lib/i18n';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { EmojiPicker } from '../components/EmojiPicker';
-import type { Category, Location, HouseholdMembership, HouseholdInvite } from '../types/database';
+import type { Category, Location, HouseholdMembership, HouseholdInvite, ItemWithDetails } from '../types/database';
 
 function PlusIcon() {
   return (
@@ -76,6 +84,22 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
 
   const [invites, setInvites] = useState<HouseholdInvite[]>([]);
   const [creatingInvite, setCreatingInvite] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportingZip, setExportingZip] = useState(false);
+  const [zipProgress, setZipProgress] = useState<ExportProgress | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  // Delete-with-reassign modal state.
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { kind: 'category'; id: string; name: string; affected: ItemWithDetails[] }
+    | { kind: 'location'; id: string; name: string; affected: ItemWithDetails[] }
+    | null
+  >(null);
+  const [reassignTo, setReassignTo] = useState<string>('');
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const active = memberships.find(m => m.household_id === activeHouseholdId);
   const isOwner = active?.role === 'owner';
@@ -220,23 +244,67 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
     }
   }
 
-  async function handleDeleteCategory(id: string) {
-    if (!confirm(tRaw('settings.deleteCategoryConfirm'))) return;
+  async function handleDeleteCategory(cat: Category) {
+    if (!activeHouseholdId) return;
     try {
-      await deleteCategory(id);
-      await loadData();
+      const affected = await getItemsByCategory(activeHouseholdId, cat.id);
+      if (affected.length === 0) {
+        if (!confirm(tRaw('settings.deleteCategoryConfirm'))) return;
+        await deleteCategory(cat.id);
+        await loadData();
+        return;
+      }
+      setReassignTo('');
+      setDeleteTarget({ kind: 'category', id: cat.id, name: cat.name, affected });
     } catch {
       alert(tRaw('settings.failedDeleteCategory'));
     }
   }
 
-  async function handleDeleteLocation(id: string) {
-    if (!confirm(tRaw('settings.deleteLocationConfirm'))) return;
+  async function handleDeleteLocation(loc: Location & { full_path: string }) {
+    if (!activeHouseholdId) return;
     try {
-      await deleteLocation(id);
-      await loadData();
+      const affected = await getItemsByLocation(activeHouseholdId, loc.id);
+      if (affected.length === 0) {
+        if (!confirm(tRaw('settings.deleteLocationConfirm'))) return;
+        await deleteLocation(loc.id);
+        await loadData();
+        return;
+      }
+      setReassignTo('');
+      setDeleteTarget({ kind: 'location', id: loc.id, name: loc.full_path, affected });
     } catch {
       alert(tRaw('settings.failedDeleteLocation'));
+    }
+  }
+
+  async function confirmDeleteWithReassign() {
+    if (!deleteTarget || !activeHouseholdId) return;
+    try {
+      setDeleteBusy(true);
+      if (deleteTarget.kind === 'category') {
+        if (reassignTo) {
+          await reassignItemsCategory(activeHouseholdId, deleteTarget.id, reassignTo);
+        }
+        await deleteCategory(deleteTarget.id);
+      } else {
+        if (reassignTo) {
+          await reassignItemsLocation(activeHouseholdId, deleteTarget.id, reassignTo);
+        }
+        await deleteLocation(deleteTarget.id);
+      }
+      setDeleteTarget(null);
+      await loadData();
+    } catch {
+      alert(
+        tRaw(
+          deleteTarget.kind === 'category'
+            ? 'settings.failedDeleteCategory'
+            : 'settings.failedDeleteLocation',
+        ),
+      );
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -290,6 +358,124 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
       await signOut();
     } catch (err) {
       console.error('Sign out failed:', err);
+    }
+  }
+
+  function triggerImportPicker() {
+    importInputRef.current?.click();
+  }
+
+  function handleImportFile(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // allow re-picking same file later
+    if (!file || !activeHouseholdId) return;
+    setPendingImportFile(file);
+  }
+
+  async function runImport(mode: ImportMode) {
+    const file = pendingImportFile;
+    setPendingImportFile(null);
+    if (!file || !activeHouseholdId) return;
+
+    const confirmKey = mode === 'replace' ? 'settings.importConfirmReplace' : 'settings.importConfirmMerge';
+    if (!confirm(tRaw(confirmKey, { household: active?.household?.name || '' }))) return;
+
+    try {
+      setImporting(true);
+      setImportProgress({ phase: 'reading', current: 0, total: 1 });
+      const result: ImportResult = await importHouseholdZip(
+        activeHouseholdId,
+        file,
+        mode,
+        (p) => setImportProgress(p),
+      );
+      alert(
+        tRaw('settings.importDone', {
+          items: result.items,
+          categories: result.categories,
+          locations: result.locations,
+          photos: result.photos,
+        }),
+      );
+      await loadData();
+      await loadInvites();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : tRaw('settings.importFailed'));
+    } finally {
+      setImporting(false);
+      setImportProgress(null);
+    }
+  }
+
+  function importButtonLabel(): string {
+    if (!importing || !importProgress) return t('settings.importZip');
+    const { phase, current, total } = importProgress;
+    switch (phase) {
+      case 'reading':     return t('settings.importingReading');
+      case 'clearing':    return t('settings.importingClearing');
+      case 'categories':  return t('settings.importingCategories', { current, total });
+      case 'locations':   return t('settings.importingLocations',  { current, total });
+      case 'photos':      return t('settings.importingPhotos',     { current, total });
+      case 'items':       return t('settings.importingItems',      { current, total });
+      default:            return t('settings.importZip');
+    }
+  }
+
+  async function handleExportZip() {
+    if (!activeHouseholdId) return;
+    try {
+      setExportingZip(true);
+      setZipProgress({ phase: 'loading', current: 0, total: 1 });
+      await exportHouseholdZip(
+        activeHouseholdId,
+        active?.household?.name || 'household',
+        (p) => setZipProgress(p),
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : tRaw('settings.exportFailed'));
+    } finally {
+      setExportingZip(false);
+      setZipProgress(null);
+    }
+  }
+
+  function zipButtonLabel(): string {
+    if (!exportingZip || !zipProgress) return t('settings.exportZip');
+    if (zipProgress.phase === 'photos') {
+      return t('settings.exportingPhotos', {
+        current: zipProgress.current,
+        total: zipProgress.total,
+      });
+    }
+    if (zipProgress.phase === 'zipping') return t('settings.exportingZipping');
+    return t('settings.exporting');
+  }
+
+  async function handleExportCsv() {
+    if (!activeHouseholdId) return;
+    try {
+      setExporting(true);
+      const items = await getAllItems(activeHouseholdId);
+      const csv = rowsToCsv(
+        ['Name', 'Description', 'Category', 'Location', 'Added', 'Updated', 'PhotoPath'],
+        items.map((i) => [
+          i.name,
+          i.description || '',
+          i.category_name || '',
+          i.location_full_path || '',
+          new Date(i.created_at).toISOString(),
+          new Date(i.updated_at).toISOString(),
+          i.photo_path || '',
+        ]),
+      );
+      const stamp = new Date().toISOString().slice(0, 10);
+      const slug = (active?.household?.name || 'household').replace(/[^a-z0-9-]+/gi, '-').toLowerCase();
+      downloadFile(`stuffinder-${slug}-${stamp}.csv`, csv);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : tRaw('settings.exportFailed'));
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -391,7 +577,44 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
           </div>
 
           {/* Account actions */}
-          <div class="pt-4 border-t border-slate-800 space-y-2">
+          <div class="pt-4 border-t border-slate-800 space-y-4">
+            <div class="space-y-1">
+              <button
+                onClick={handleExportCsv}
+                class="btn-secondary w-full"
+                disabled={exporting || exportingZip}
+              >
+                {exporting ? t('settings.exporting') : t('settings.exportCsv')}
+              </button>
+              <p class="text-xs text-slate-500 px-1">{t('settings.exportCsvHint')}</p>
+            </div>
+            <div class="space-y-1">
+              <button
+                onClick={handleExportZip}
+                class="btn-secondary w-full"
+                disabled={exporting || exportingZip || importing}
+              >
+                {zipButtonLabel()}
+              </button>
+              <p class="text-xs text-slate-500 px-1">{t('settings.exportZipHint')}</p>
+            </div>
+            <div class="space-y-1">
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/zip,.zip"
+                onChange={handleImportFile}
+                class="hidden"
+              />
+              <button
+                onClick={triggerImportPicker}
+                class="btn-secondary w-full"
+                disabled={exporting || exportingZip || importing}
+              >
+                {importButtonLabel()}
+              </button>
+              <p class="text-xs text-slate-500 px-1">{t('settings.importHint')}</p>
+            </div>
             {!isOwner && (
               <button onClick={handleLeave} class="btn-secondary w-full">
                 {t('settings.leave')}
@@ -451,7 +674,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                     <PencilIcon />
                   </button>
                   <button
-                    onClick={() => handleDeleteCategory(cat.id)}
+                    onClick={() => handleDeleteCategory(cat)}
                     class="p-2 text-slate-500 hover:text-red-400 transition-colors"
                     aria-label={t('common.delete')}
                   >
@@ -547,7 +770,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                     <PencilIcon />
                   </button>
                   <button
-                    onClick={() => handleDeleteLocation(loc.id)}
+                    onClick={() => handleDeleteLocation(loc)}
                     class="p-2 text-slate-500 hover:text-red-400 transition-colors"
                     aria-label={t('common.delete')}
                   >
@@ -654,6 +877,125 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
           </p>
         </div>
       ) : null}
+
+      {deleteTarget && (
+        <div class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div class="bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-semibold text-slate-100">
+              {t(
+                deleteTarget.kind === 'category'
+                  ? 'settings.deleteCategoryTitle'
+                  : 'settings.deleteLocationTitle',
+                { name: deleteTarget.name },
+              )}
+            </h3>
+
+            <div>
+              <p class="text-sm text-slate-400 mb-2">
+                {t('settings.deleteAffectedHeading')} ({deleteTarget.affected.length})
+              </p>
+              <ul class="bg-slate-900 rounded-lg border border-slate-700 max-h-48 overflow-y-auto divide-y divide-slate-800">
+                {deleteTarget.affected.map((it) => (
+                  <li key={it.id} class="px-3 py-2 text-sm flex items-center gap-2">
+                    <span>{it.category_icon || (deleteTarget.kind === 'location' ? '📍' : '📦')}</span>
+                    <span class="text-slate-200 truncate">{it.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <label class="input-label" for="reassign-select">
+                {t(
+                  deleteTarget.kind === 'category'
+                    ? 'settings.reassignCategoryLabel'
+                    : 'settings.reassignLocationLabel',
+                )}
+              </label>
+              <select
+                id="reassign-select"
+                value={reassignTo}
+                onChange={(e) => setReassignTo((e.target as HTMLSelectElement).value)}
+                class="select"
+              >
+                <option value="">{t('settings.reassignLeaveBlank')}</option>
+                {deleteTarget.kind === 'category'
+                  ? categories
+                      .filter((c) => c.id !== deleteTarget.id)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.icon} {c.name}
+                        </option>
+                      ))
+                  : locations
+                      .filter((l) => l.id !== deleteTarget.id)
+                      .map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.icon} {l.full_path}
+                        </option>
+                      ))}
+              </select>
+              {!reassignTo && (
+                <p class="text-xs text-amber-400 mt-2">
+                  {t(
+                    deleteTarget.kind === 'category'
+                      ? 'settings.reassignBlankWarningCategory'
+                      : 'settings.reassignBlankWarningLocation',
+                  )}
+                </p>
+              )}
+            </div>
+
+            <div class="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                class="btn-secondary flex-1"
+                disabled={deleteBusy}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={confirmDeleteWithReassign}
+                class="btn-danger flex-1"
+                disabled={deleteBusy}
+              >
+                {deleteBusy ? t('common.deleting') : t('common.delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingImportFile && (
+        <div class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div class="bg-slate-800 rounded-xl p-6 max-w-md w-full space-y-4">
+            <h3 class="text-lg font-semibold text-slate-100">{t('settings.importModeTitle')}</h3>
+
+            <button
+              onClick={() => runImport('merge')}
+              class="w-full text-left bg-slate-700 hover:bg-slate-600 rounded-lg p-3 transition-colors"
+            >
+              <p class="font-medium text-slate-100">{t('settings.importModeMerge')}</p>
+              <p class="text-xs text-slate-400 mt-1">{t('settings.importModeMergeHint')}</p>
+            </button>
+
+            <button
+              onClick={() => runImport('replace')}
+              class="w-full text-left bg-slate-700 hover:bg-red-900/60 rounded-lg p-3 transition-colors"
+            >
+              <p class="font-medium text-red-300">{t('settings.importModeReplace')}</p>
+              <p class="text-xs text-slate-400 mt-1">{t('settings.importModeReplaceHint')}</p>
+            </button>
+
+            <button
+              onClick={() => setPendingImportFile(null)}
+              class="btn-secondary w-full"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
