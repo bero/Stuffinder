@@ -7,7 +7,6 @@ import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
 import { Onboarding } from './pages/Onboarding';
 import { NavBar } from './components/NavBar';
-import { LanguagePicker } from './components/LanguagePicker';
 import { useSession, useMemberships, useActiveHousehold } from './lib/auth';
 
 function FullscreenLoader() {
@@ -21,24 +20,14 @@ function FullscreenLoader() {
 export function App() {
   const { session, loading: sessionLoading } = useSession();
 
-  if (sessionLoading) {
-    return (
-      <>
-        <LanguagePicker />
-        <FullscreenLoader />
-      </>
-    );
-  }
+  if (sessionLoading) return <FullscreenLoader />;
 
   if (!session) {
     return (
-      <>
-        <LanguagePicker />
-        <Router>
-          <Route path="/signup" component={Signup} />
-          <Route default component={Login} />
-        </Router>
-      </>
+      <Router>
+        <Route path="/signup" component={Signup} />
+        <Route default component={Login} />
+      </Router>
     );
   }
 
@@ -59,7 +48,6 @@ function AuthedApp({ session }: { session: import('@supabase/supabase-js').Sessi
 
   return (
     <div class="min-h-screen flex flex-col safe-top safe-bottom">
-      <LanguagePicker />
       <main class="flex-1 pb-20">
         <Router>
           <Route path="/" component={Home} activeHouseholdId={activeId} />

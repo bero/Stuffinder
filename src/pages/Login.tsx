@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { signIn } from '../lib/auth';
 import { useT } from '../lib/i18n';
+import { LanguagePicker } from '../components/LanguagePicker';
 
 export function Login() {
   const t = useT();
@@ -27,6 +28,7 @@ export function Login() {
 
   return (
     <div class="min-h-screen flex items-center justify-center p-6">
+      <LanguagePicker />
       <div class="w-full max-w-sm space-y-6">
         <header class="text-center">
           <h1 class="text-3xl font-bold text-slate-100">{t('auth.login.title')}</h1>

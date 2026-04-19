@@ -142,6 +142,15 @@ const en: Dict = {
   'nav.settings': 'Settings',
 
   'lang.picker': 'Language',
+
+  'about.tab': 'About',
+  'about.bio': 'My name is Roland Bengtsson. I am originally from Sweden but live in Finland.',
+  'about.motivation': 'I built Stuffinder for my own needs.',
+  'about.pullRequests': 'If you have suggestions, pull requests are welcome.',
+  'about.messenger': 'Or just to chat on Messenger. I speak Swedish and English.',
+  'about.github': 'GitHub',
+  'about.facebook': 'Facebook',
+  'about.version': 'Version',
 };
 
 const sv: Dict = {
@@ -271,6 +280,15 @@ const sv: Dict = {
   'nav.settings': 'Inställningar',
 
   'lang.picker': 'Språk',
+
+  'about.tab': 'Om',
+  'about.bio': 'Mitt namn är Roland Bengtsson. Jag kommer ursprungligen från Sverige men bor i Finland.',
+  'about.motivation': 'Jag utvecklade Stuffinder för mina egna behov.',
+  'about.pullRequests': 'Har du förslag på ändringar är pullrequests välkomna.',
+  'about.messenger': 'Eller bara för diskussion på Messenger. Jag talar Svenska och Engelska.',
+  'about.github': 'GitHub',
+  'about.facebook': 'Facebook',
+  'about.version': 'Version',
 };
 
 const fi: Dict = {
@@ -400,6 +418,15 @@ const fi: Dict = {
   'nav.settings': 'Asetukset',
 
   'lang.picker': 'Kieli',
+
+  'about.tab': 'Tietoja',
+  'about.bio': 'Nimeni on Roland Bengtsson. Olen alun perin Ruotsista, mutta asun Suomessa.',
+  'about.motivation': 'Kehitin Stuffinderin omiin tarpeisiini.',
+  'about.pullRequests': 'Jos sinulla on parannusehdotuksia, pull requestit ovat tervetulleita.',
+  'about.messenger': 'Tai vain juttelua varten Messengerissä. Puhun ruotsia ja englantia.',
+  'about.github': 'GitHub',
+  'about.facebook': 'Facebook',
+  'about.version': 'Versio',
 };
 
 const de: Dict = {
@@ -529,6 +556,15 @@ const de: Dict = {
   'nav.settings': 'Einstellungen',
 
   'lang.picker': 'Sprache',
+
+  'about.tab': 'Über',
+  'about.bio': 'Mein Name ist Roland Bengtsson. Ich komme ursprünglich aus Schweden, lebe aber in Finnland.',
+  'about.motivation': 'Ich habe Stuffinder für meine eigenen Bedürfnisse entwickelt.',
+  'about.pullRequests': 'Wenn du Änderungsvorschläge hast, sind Pull Requests willkommen.',
+  'about.messenger': 'Oder einfach zum Austausch auf Messenger. Ich spreche Schwedisch und Englisch.',
+  'about.github': 'GitHub',
+  'about.facebook': 'Facebook',
+  'about.version': 'Version',
 };
 
 const fr: Dict = {
@@ -658,6 +694,15 @@ const fr: Dict = {
   'nav.settings': 'Paramètres',
 
   'lang.picker': 'Langue',
+
+  'about.tab': 'À propos',
+  'about.bio': 'Je m\'appelle Roland Bengtsson. Je viens à l\'origine de Suède mais je vis en Finlande.',
+  'about.motivation': 'J\'ai développé Stuffinder pour mes propres besoins.',
+  'about.pullRequests': 'Si vous avez des suggestions, les pull requests sont les bienvenues.',
+  'about.messenger': 'Ou simplement pour discuter sur Messenger. Je parle suédois et anglais.',
+  'about.github': 'GitHub',
+  'about.facebook': 'Facebook',
+  'about.version': 'Version',
 };
 
 const it: Dict = {
@@ -787,6 +832,15 @@ const it: Dict = {
   'nav.settings': 'Impostazioni',
 
   'lang.picker': 'Lingua',
+
+  'about.tab': 'Informazioni',
+  'about.bio': 'Mi chiamo Roland Bengtsson. Sono originario della Svezia ma vivo in Finlandia.',
+  'about.motivation': 'Ho sviluppato Stuffinder per le mie esigenze personali.',
+  'about.pullRequests': 'Se hai suggerimenti, le pull request sono benvenute.',
+  'about.messenger': 'Oppure solo per fare due chiacchiere su Messenger. Parlo svedese e inglese.',
+  'about.github': 'GitHub',
+  'about.facebook': 'Facebook',
+  'about.version': 'Versione',
 };
 
 const es: Dict = {
@@ -916,6 +970,15 @@ const es: Dict = {
   'nav.settings': 'Ajustes',
 
   'lang.picker': 'Idioma',
+
+  'about.tab': 'Acerca de',
+  'about.bio': 'Me llamo Roland Bengtsson. Soy originario de Suecia pero vivo en Finlandia.',
+  'about.motivation': 'Desarrollé Stuffinder para mis propias necesidades.',
+  'about.pullRequests': 'Si tienes sugerencias, los pull requests son bienvenidos.',
+  'about.messenger': 'O simplemente para charlar en Messenger. Hablo sueco e inglés.',
+  'about.github': 'GitHub',
+  'about.facebook': 'Facebook',
+  'about.version': 'Versión',
 };
 
 const pt: Dict = {
@@ -1045,6 +1108,15 @@ const pt: Dict = {
   'nav.settings': 'Definições',
 
   'lang.picker': 'Idioma',
+
+  'about.tab': 'Sobre',
+  'about.bio': 'Chamo-me Roland Bengtsson. Sou originalmente da Suécia mas vivo na Finlândia.',
+  'about.motivation': 'Desenvolvi o Stuffinder para as minhas próprias necessidades.',
+  'about.pullRequests': 'Se tiveres sugestões, pull requests são bem-vindos.',
+  'about.messenger': 'Ou apenas para conversar no Messenger. Falo sueco e inglês.',
+  'about.github': 'GitHub',
+  'about.facebook': 'Facebook',
+  'about.version': 'Versão',
 };
 
 const translations: Record<Locale, Dict> = { en, sv, fi, de, fr, it, es, pt };

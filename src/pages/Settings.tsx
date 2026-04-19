@@ -16,6 +16,7 @@ import {
 import { signOut } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { useT, t as tRaw, formatDate } from '../lib/i18n';
+import { LanguagePicker } from '../components/LanguagePicker';
 import type { Category, Location, HouseholdMembership, HouseholdInvite } from '../types/database';
 
 function PlusIcon() {
@@ -42,7 +43,9 @@ function PencilIcon() {
   );
 }
 
-type Tab = 'household' | 'categories' | 'locations';
+type Tab = 'household' | 'categories' | 'locations' | 'about';
+
+const APP_VERSION = '1.0.0';
 
 interface Props {
   activeHouseholdId?: string;
@@ -291,23 +294,24 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
 
   return (
     <div class="px-4 pt-6">
+      <LanguagePicker />
       <header class="mb-6">
         <h1 class="text-2xl font-bold text-slate-100">{t('settings.title')}</h1>
         <p class="text-slate-400">{active?.household?.name || t('settings.title')}</p>
       </header>
 
       <div class="flex border-b border-slate-700 mb-4 overflow-x-auto">
-        {(['household', 'categories', 'locations'] as Tab[]).map((tab) => (
+        {(['household', 'categories', 'locations', 'about'] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => { setActiveTab(tab); resetForm(); }}
-            class={`px-4 py-2 font-medium border-b-2 transition-colors ${
+            class={`px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === tab
                 ? 'text-primary-400 border-primary-400'
                 : 'text-slate-400 border-transparent hover:text-slate-300'
             }`}
           >
-            {t(`settings.tabs.${tab}`)}
+            {tab === 'about' ? t('about.tab') : t(`settings.tabs.${tab}`)}
           </button>
         ))}
       </div>
@@ -399,7 +403,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
         </div>
       )}
 
-      {loading && activeTab !== 'household' ? (
+      {loading && (activeTab === 'categories' || activeTab === 'locations') ? (
         <div class="flex justify-center py-12">
           <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent"></div>
         </div>
@@ -623,6 +627,58 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
               {t('settings.addLocation')}
             </button>
           )}
+        </div>
+      ) : activeTab === 'about' ? (
+        <div class="space-y-4">
+          <div class="card space-y-3">
+            <p class="text-slate-100">{t('about.bio')}</p>
+            <p class="text-slate-300">{t('about.motivation')}</p>
+          </div>
+
+          <a
+            href="https://github.com/bero/stuffinder"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="card flex items-center gap-3 hover:bg-slate-750 transition-colors"
+          >
+            <svg class="w-6 h-6 text-slate-200" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 .296C5.372.296 0 5.67 0 12.297c0 5.302 3.438 9.8 8.207 11.388.6.111.82-.261.82-.577 0-.285-.01-1.04-.016-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.089-.745.083-.729.083-.729 1.205.084 1.838 1.237 1.838 1.237 1.07 1.834 2.807 1.304 3.492.997.108-.775.418-1.304.762-1.604-2.665-.305-5.467-1.334-5.467-5.933 0-1.311.468-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.322 3.3 1.23a11.5 11.5 0 0 1 3.003-.404c1.02.005 2.047.138 3.006.404 2.29-1.552 3.297-1.23 3.297-1.23.655 1.652.243 2.873.12 3.176.77.84 1.235 1.91 1.235 3.221 0 4.61-2.807 5.625-5.48 5.922.43.372.814 1.102.814 2.222 0 1.606-.015 2.898-.015 3.293 0 .32.216.694.825.576C20.565 22.092 24 17.597 24 12.297 24 5.67 18.627.296 12 .296z"/>
+            </svg>
+            <div class="flex-1">
+              <p class="font-medium text-slate-100">{t('about.github')}</p>
+              <p class="text-sm text-slate-400">bero/stuffinder</p>
+            </div>
+            <svg class="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+
+          <a
+            href="https://www.facebook.com/bero001"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="card flex items-center gap-3 hover:bg-slate-750 transition-colors"
+          >
+            <svg class="w-6 h-6 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            </svg>
+            <div class="flex-1">
+              <p class="font-medium text-slate-100">{t('about.facebook')}</p>
+              <p class="text-sm text-slate-400">bero001</p>
+            </div>
+            <svg class="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+
+          <div class="space-y-2 text-sm text-slate-400 text-center px-2 pt-2">
+            <p>{t('about.pullRequests')}</p>
+            <p>{t('about.messenger')}</p>
+          </div>
+
+          <p class="text-xs text-slate-600 text-center pt-4">
+            {t('about.version')} {APP_VERSION}
+          </p>
         </div>
       ) : null}
     </div>

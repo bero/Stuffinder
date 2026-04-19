@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { createHousehold, acceptInvite } from '../lib/api';
 import { useT } from '../lib/i18n';
+import { LanguagePicker } from '../components/LanguagePicker';
 
 function errMsg(e: unknown, fallback: string): string {
   if (e && typeof e === 'object' && 'message' in e && typeof (e as any).message === 'string') {
@@ -57,6 +58,7 @@ export function Onboarding({ onDone }: Props) {
 
   return (
     <div class="min-h-screen flex items-center justify-center p-6">
+      <LanguagePicker />
       <div class="w-full max-w-sm space-y-6">
         <header class="text-center">
           <h1 class="text-3xl font-bold text-slate-100">{t('onboarding.welcome')}</h1>
