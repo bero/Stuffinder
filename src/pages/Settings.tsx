@@ -15,6 +15,7 @@ import {
 } from '../lib/api';
 import { signOut } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { useT, t as tRaw, formatDate } from '../lib/i18n';
 import type { Category, Location, HouseholdMembership, HouseholdInvite } from '../types/database';
 
 function PlusIcon() {
@@ -51,6 +52,7 @@ interface Props {
 }
 
 export function Settings({ activeHouseholdId, memberships = [], onSelectHousehold, onHouseholdChange }: Props) {
+  const t = useT();
   const [activeTab, setActiveTab] = useState<Tab>('household');
   const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Array<Location & { full_path: string }>>([]);
@@ -148,7 +150,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
       await loadData();
       setEditingId(null);
     } catch {
-      setError('Failed to update category');
+      setError(t('settings.failedUpdateCategory'));
     } finally {
       setSaving(false);
     }
@@ -158,7 +160,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
     e.preventDefault();
     if (!editingId || !editName.trim()) return;
     if (editParentId === editingId) {
-      setError('A location cannot be its own parent');
+      setError(t('settings.selfParent'));
       return;
     }
     try {
@@ -172,7 +174,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
       await loadData();
       setEditingId(null);
     } catch {
-      setError('Failed to update location');
+      setError(t('settings.failedUpdateLocation'));
     } finally {
       setSaving(false);
     }
@@ -188,7 +190,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
       await loadData();
       resetForm();
     } catch (err) {
-      setError('Failed to add category');
+      setError(t('settings.failedAddCategory'));
     } finally {
       setSaving(false);
     }
@@ -208,29 +210,29 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
       await loadData();
       resetForm();
     } catch (err) {
-      setError('Failed to add location');
+      setError(t('settings.failedAddLocation'));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDeleteCategory(id: string) {
-    if (!confirm('Delete this category? Items using it will have no category.')) return;
+    if (!confirm(tRaw('settings.deleteCategoryConfirm'))) return;
     try {
       await deleteCategory(id);
       await loadData();
     } catch {
-      alert('Failed to delete category');
+      alert(tRaw('settings.failedDeleteCategory'));
     }
   }
 
   async function handleDeleteLocation(id: string) {
-    if (!confirm('Delete this location? Items and sub-locations will have no location.')) return;
+    if (!confirm(tRaw('settings.deleteLocationConfirm'))) return;
     try {
       await deleteLocation(id);
       await loadData();
     } catch {
-      alert('Failed to delete location');
+      alert(tRaw('settings.failedDeleteLocation'));
     }
   }
 
@@ -241,41 +243,41 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
       await createInvite(activeHouseholdId);
       await loadInvites();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create invite');
+      alert(err instanceof Error ? err.message : tRaw('settings.failedCreateInvite'));
     } finally {
       setCreatingInvite(false);
     }
   }
 
   async function handleRevokeInvite(code: string) {
-    if (!confirm(`Revoke invite ${code}?`)) return;
+    if (!confirm(tRaw('settings.revokeConfirm', { code }))) return;
     try {
       await revokeInvite(code);
       await loadInvites();
     } catch {
-      alert('Failed to revoke invite');
+      alert(tRaw('settings.failedRevoke'));
     }
   }
 
   async function handleCopyCode(code: string) {
     try {
       await navigator.clipboard.writeText(code);
-      alert(`Copied code ${code}`);
+      alert(tRaw('settings.copiedCode', { code }));
     } catch {
-      prompt('Copy this code:', code);
+      prompt(tRaw('settings.copyPrompt'), code);
     }
   }
 
   async function handleLeave() {
     if (!activeHouseholdId) return;
-    if (!confirm('Leave this household? You will lose access to its items.')) return;
+    if (!confirm(tRaw('settings.leaveConfirm'))) return;
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
       await leaveHousehold(activeHouseholdId, userData.user.id);
       onHouseholdChange?.();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to leave household');
+      alert(err instanceof Error ? err.message : tRaw('settings.leave'));
     }
   }
 
@@ -290,8 +292,8 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
   return (
     <div class="px-4 pt-6">
       <header class="mb-6">
-        <h1 class="text-2xl font-bold text-slate-100">Settings</h1>
-        <p class="text-slate-400">{active?.household?.name || 'Settings'}</p>
+        <h1 class="text-2xl font-bold text-slate-100">{t('settings.title')}</h1>
+        <p class="text-slate-400">{active?.household?.name || t('settings.title')}</p>
       </header>
 
       <div class="flex border-b border-slate-700 mb-4 overflow-x-auto">
@@ -299,13 +301,13 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
           <button
             key={tab}
             onClick={() => { setActiveTab(tab); resetForm(); }}
-            class={`px-4 py-2 font-medium border-b-2 transition-colors capitalize ${
+            class={`px-4 py-2 font-medium border-b-2 transition-colors ${
               activeTab === tab
                 ? 'text-primary-400 border-primary-400'
                 : 'text-slate-400 border-transparent hover:text-slate-300'
             }`}
           >
-            {tab}
+            {t(`settings.tabs.${tab}`)}
           </button>
         ))}
       </div>
@@ -315,7 +317,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
           {/* Household switcher */}
           {memberships.length > 1 && (
             <div>
-              <h2 class="text-sm font-semibold text-slate-300 mb-2">Your households</h2>
+              <h2 class="text-sm font-semibold text-slate-300 mb-2">{t('settings.yourHouseholds')}</h2>
               <div class="space-y-2">
                 {memberships.map((m) => (
                   <button
@@ -327,10 +329,10 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                   >
                     <div>
                       <p class="font-medium text-slate-100">{m.household?.name}</p>
-                      <p class="text-xs text-slate-400 capitalize">{m.role}</p>
+                      <p class="text-xs text-slate-400">{t(`settings.${m.role}`)}</p>
                     </div>
                     {m.household_id === activeHouseholdId && (
-                      <span class="text-primary-400 text-sm">Active</span>
+                      <span class="text-primary-400 text-sm">{t('settings.active')}</span>
                     )}
                   </button>
                 ))}
@@ -341,20 +343,20 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
           {/* Invites */}
           <div>
             <div class="flex items-center justify-between mb-2">
-              <h2 class="text-sm font-semibold text-slate-300">Invite codes</h2>
+              <h2 class="text-sm font-semibold text-slate-300">{t('settings.inviteCodes')}</h2>
               <button
                 onClick={handleCreateInvite}
                 disabled={creatingInvite}
                 class="btn-primary px-3 py-1.5 text-sm"
               >
-                {creatingInvite ? 'Creating…' : 'New invite'}
+                {creatingInvite ? t('settings.creatingInvite') : t('settings.newInvite')}
               </button>
             </div>
             <p class="text-xs text-slate-500 mb-3">
-              Share a code with someone to add them to this household. Codes expire in 7 days.
+              {t('settings.inviteHint')}
             </p>
             {invites.length === 0 ? (
-              <p class="text-slate-500 text-sm">No active invites.</p>
+              <p class="text-slate-500 text-sm">{t('settings.noInvites')}</p>
             ) : (
               <div class="space-y-2">
                 {invites.map((inv) => (
@@ -367,12 +369,12 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                     </button>
                     <div class="flex items-center gap-2">
                       <span class="text-xs text-slate-500">
-                        expires {new Date(inv.expires_at).toLocaleDateString()}
+                        {t('settings.expires', { date: formatDate(inv.expires_at) })}
                       </span>
                       <button
                         onClick={() => handleRevokeInvite(inv.code)}
                         class="p-2 text-slate-500 hover:text-red-400"
-                        aria-label="Revoke"
+                        aria-label={t('common.delete')}
                       >
                         <TrashIcon />
                       </button>
@@ -387,11 +389,11 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
           <div class="pt-4 border-t border-slate-800 space-y-2">
             {!isOwner && (
               <button onClick={handleLeave} class="btn-secondary w-full">
-                Leave household
+                {t('settings.leave')}
               </button>
             )}
             <button onClick={handleSignOut} class="btn-secondary w-full">
-              Sign out
+              {t('settings.signOut')}
             </button>
           </div>
         </div>
@@ -425,9 +427,9 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                 </div>
                 {error && <p class="text-red-400 text-sm">{error}</p>}
                 <div class="flex gap-2">
-                  <button type="button" onClick={cancelEdit} class="btn-secondary flex-1">Cancel</button>
+                  <button type="button" onClick={cancelEdit} class="btn-secondary flex-1">{t('common.cancel')}</button>
                   <button type="submit" disabled={saving} class="btn-primary flex-1">
-                    {saving ? 'Saving...' : 'Save'}
+                    {saving ? t('common.saving') : t('common.save')}
                   </button>
                 </div>
               </form>
@@ -446,14 +448,14 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                   <button
                     onClick={() => startEditCategory(cat)}
                     class="p-2 text-slate-400 hover:text-slate-200 transition-colors"
-                    aria-label="Edit"
+                    aria-label={t('common.edit')}
                   >
                     <PencilIcon />
                   </button>
                   <button
                     onClick={() => handleDeleteCategory(cat.id)}
                     class="p-2 text-slate-500 hover:text-red-400 transition-colors"
-                    aria-label="Delete"
+                    aria-label={t('common.delete')}
                   >
                     <TrashIcon />
                   </button>
@@ -477,16 +479,16 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                   type="text"
                   value={newName}
                   onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
-                  placeholder="Category name"
+                  placeholder={t('settings.categoryName')}
                   class="input flex-1"
                   required
                 />
               </div>
               {error && <p class="text-red-400 text-sm">{error}</p>}
               <div class="flex gap-2">
-                <button type="button" onClick={resetForm} class="btn-secondary flex-1">Cancel</button>
+                <button type="button" onClick={resetForm} class="btn-secondary flex-1">{t('common.cancel')}</button>
                 <button type="submit" disabled={saving} class="btn-primary flex-1">
-                  {saving ? 'Adding...' : 'Add'}
+                  {saving ? t('common.adding') : t('common.add')}
                 </button>
               </div>
             </form>
@@ -496,7 +498,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
               class="card w-full flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-750 transition-colors"
             >
               <PlusIcon />
-              Add Category
+              {t('settings.addCategory')}
             </button>
           )}
         </div>
@@ -527,7 +529,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                   onChange={(e) => setEditParentId((e.target as HTMLSelectElement).value)}
                   class="select"
                 >
-                  <option value="">No parent (top level)</option>
+                  <option value="">{t('settings.noParent')}</option>
                   {locations
                     .filter((l) => l.id !== loc.id)
                     .map((l) => (
@@ -538,9 +540,9 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                 </select>
                 {error && <p class="text-red-400 text-sm">{error}</p>}
                 <div class="flex gap-2">
-                  <button type="button" onClick={cancelEdit} class="btn-secondary flex-1">Cancel</button>
+                  <button type="button" onClick={cancelEdit} class="btn-secondary flex-1">{t('common.cancel')}</button>
                   <button type="submit" disabled={saving} class="btn-primary flex-1">
-                    {saving ? 'Saving...' : 'Save'}
+                    {saving ? t('common.saving') : t('common.save')}
                   </button>
                 </div>
               </form>
@@ -556,14 +558,14 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                   <button
                     onClick={() => startEditLocation(loc)}
                     class="p-2 text-slate-400 hover:text-slate-200 transition-colors"
-                    aria-label="Edit"
+                    aria-label={t('common.edit')}
                   >
                     <PencilIcon />
                   </button>
                   <button
                     onClick={() => handleDeleteLocation(loc.id)}
                     class="p-2 text-slate-500 hover:text-red-400 transition-colors"
-                    aria-label="Delete"
+                    aria-label={t('common.delete')}
                   >
                     <TrashIcon />
                   </button>
@@ -587,7 +589,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                   type="text"
                   value={newName}
                   onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
-                  placeholder="Location name"
+                  placeholder={t('settings.locationName')}
                   class="input flex-1"
                   required
                 />
@@ -606,9 +608,9 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
               </select>
               {error && <p class="text-red-400 text-sm">{error}</p>}
               <div class="flex gap-2">
-                <button type="button" onClick={resetForm} class="btn-secondary flex-1">Cancel</button>
+                <button type="button" onClick={resetForm} class="btn-secondary flex-1">{t('common.cancel')}</button>
                 <button type="submit" disabled={saving} class="btn-primary flex-1">
-                  {saving ? 'Adding...' : 'Add'}
+                  {saving ? t('common.adding') : t('common.add')}
                 </button>
               </div>
             </form>
@@ -618,7 +620,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
               class="card w-full flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-750 transition-colors"
             >
               <PlusIcon />
-              Add Location
+              {t('settings.addLocation')}
             </button>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { route } from 'preact-router';
 import { createItem, getCategories, getLocationsWithPath } from '../lib/api';
+import { useT } from '../lib/i18n';
 import type { Category, Location } from '../types/database';
 
 function CameraIcon() {
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function AddItem({ activeHouseholdId }: Props) {
+  const t = useT();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -91,12 +93,12 @@ export function AddItem({ activeHouseholdId }: Props) {
     e.preventDefault();
 
     if (!activeHouseholdId) {
-      setError('No household selected');
+      setError(t('addItem.noHousehold'));
       return;
     }
 
     if (!name.trim()) {
-      setError('Please enter a name');
+      setError(t('addItem.pleaseEnterName'));
       return;
     }
 
@@ -114,7 +116,7 @@ export function AddItem({ activeHouseholdId }: Props) {
 
       route('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save item');
+      setError(err instanceof Error ? err.message : t('addItem.failedSave'));
     } finally {
       setSaving(false);
     }
@@ -130,13 +132,13 @@ export function AddItem({ activeHouseholdId }: Props) {
         >
           <BackIcon />
         </button>
-        <h1 class="text-lg font-semibold">Add Item</h1>
+        <h1 class="text-lg font-semibold">{t('addItem.title')}</h1>
       </header>
-      
+
       <form onSubmit={handleSubmit} class="p-4 space-y-6">
         {/* Photo capture */}
         <div>
-          <label class="input-label">Photo</label>
+          <label class="input-label">{t('addItem.photo')}</label>
           <input
             ref={fileInputRef}
             type="file"
@@ -170,35 +172,35 @@ export function AddItem({ activeHouseholdId }: Props) {
               class="w-full h-48 border-2 border-dashed border-slate-600 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-slate-500 hover:bg-slate-800/50 transition-colors"
             >
               <CameraIcon />
-              <span class="text-slate-400">Tap to take photo</span>
+              <span class="text-slate-400">{t('addItem.tapToTakePhoto')}</span>
             </button>
           )}
         </div>
-        
+
         {/* Name */}
         <div>
-          <label class="input-label" for="name">Name *</label>
+          <label class="input-label" for="name">{t('addItem.name')}</label>
           <input
             id="name"
             type="text"
             value={name}
             onInput={(e) => setName((e.target as HTMLInputElement).value)}
-            placeholder="What is this item?"
+            placeholder={t('addItem.namePlaceholder')}
             class="input"
             required
           />
         </div>
-        
+
         {/* Location */}
         <div>
-          <label class="input-label" for="location">Location</label>
+          <label class="input-label" for="location">{t('addItem.location')}</label>
           <select
             id="location"
             value={locationId}
             onChange={(e) => setLocationId((e.target as HTMLSelectElement).value)}
             class="select"
           >
-            <option value="">Select location...</option>
+            <option value="">{t('addItem.selectLocation')}</option>
             {locations.map((loc) => (
               <option key={loc.id} value={loc.id}>
                 {loc.icon} {loc.full_path}
@@ -206,17 +208,17 @@ export function AddItem({ activeHouseholdId }: Props) {
             ))}
           </select>
         </div>
-        
+
         {/* Category */}
         <div>
-          <label class="input-label" for="category">Category</label>
+          <label class="input-label" for="category">{t('addItem.category')}</label>
           <select
             id="category"
             value={categoryId}
             onChange={(e) => setCategoryId((e.target as HTMLSelectElement).value)}
             class="select"
           >
-            <option value="">Select category...</option>
+            <option value="">{t('addItem.selectCategory')}</option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.icon} {cat.name}
@@ -224,15 +226,15 @@ export function AddItem({ activeHouseholdId }: Props) {
             ))}
           </select>
         </div>
-        
+
         {/* Description */}
         <div>
-          <label class="input-label" for="description">Description (optional)</label>
+          <label class="input-label" for="description">{t('addItem.descriptionOptional')}</label>
           <textarea
             id="description"
             value={description}
             onInput={(e) => setDescription((e.target as HTMLTextAreaElement).value)}
-            placeholder="Additional details..."
+            placeholder={t('addItem.descPlaceholder')}
             rows={3}
             class="input resize-none"
           />
@@ -254,10 +256,10 @@ export function AddItem({ activeHouseholdId }: Props) {
           {saving ? (
             <span class="flex items-center justify-center gap-2">
               <span class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></span>
-              Saving...
+              {t('common.saving')}
             </span>
           ) : (
-            'Save Item'
+            t('addItem.save')
           )}
         </button>
       </form>

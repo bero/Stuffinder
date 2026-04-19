@@ -1,4 +1,5 @@
 import { route } from 'preact-router';
+import { useT } from '../lib/i18n';
 
 // Simple icon components
 function HomeIcon({ active }: { active: boolean }) {
@@ -27,6 +28,7 @@ function SettingsIcon({ active }: { active: boolean }) {
 }
 
 export function NavBar() {
+  const t = useT();
   // Get current path
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
   
@@ -40,7 +42,7 @@ export function NavBar() {
         >
           <HomeIcon active={currentPath === '/'} />
           <span class={`text-xs mt-1 ${currentPath === '/' ? 'text-primary-400' : 'text-slate-400'}`}>
-            Home
+            {t('nav.home')}
           </span>
         </button>
         
@@ -59,7 +61,7 @@ export function NavBar() {
         >
           <SettingsIcon active={currentPath === '/settings'} />
           <span class={`text-xs mt-1 ${currentPath === '/settings' ? 'text-primary-400' : 'text-slate-400'}`}>
-            Settings
+            {t('nav.settings')}
           </span>
         </button>
       </div>

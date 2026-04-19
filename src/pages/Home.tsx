@@ -2,6 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { route } from 'preact-router';
 import { searchItems, getItems, countItems, ITEMS_PAGE_SIZE } from '../lib/api';
 import { prefetchPhotoUrls } from '../lib/supabase';
+import { useT } from '../lib/i18n';
 import type { ItemWithDetails } from '../types/database';
 
 function SearchIcon() {
@@ -58,16 +59,17 @@ function ItemCard({ item, photoUrl }: { item: ItemWithDetails; photoUrl: string 
 }
 
 function EmptyState({ hasSearch }: { hasSearch: boolean }) {
+  const t = useT();
   return (
     <div class="text-center py-12">
       <div class="text-6xl mb-4">{hasSearch ? '🔍' : '📦'}</div>
       <h2 class="text-xl font-semibold text-slate-300">
-        {hasSearch ? 'No items found' : 'No items yet'}
+        {hasSearch ? t('home.noItemsFound') : t('home.noItemsYet')}
       </h2>
       <p class="text-slate-400 mt-2">
         {hasSearch
-          ? 'Try a different search term'
-          : 'Tap the + button to add your first item'
+          ? t('home.tryDifferentSearch')
+          : t('home.addFirstHint')
         }
       </p>
     </div>
@@ -79,6 +81,7 @@ interface Props {
 }
 
 export function Home({ activeHouseholdId }: Props) {
+  const t = useT();
   const [items, setItems] = useState<ItemWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -98,7 +101,7 @@ export function Home({ activeHouseholdId }: Props) {
       setItems(data);
       setTotalCount(total);
     } catch (err) {
-      setError('Failed to load items');
+      setError(t('home.failedLoad'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -150,8 +153,8 @@ export function Home({ activeHouseholdId }: Props) {
   return (
     <div class="px-4 pt-6">
       <header class="mb-6">
-        <h1 class="text-2xl font-bold text-slate-100">StuffFinder</h1>
-        <p class="text-slate-400">Find where you put things</p>
+        <h1 class="text-2xl font-bold text-slate-100">{t('home.title')}</h1>
+        <p class="text-slate-400">{t('home.tagline')}</p>
       </header>
 
       <div class="relative mb-6">
@@ -160,7 +163,7 @@ export function Home({ activeHouseholdId }: Props) {
         </div>
         <input
           type="search"
-          placeholder="Search items..."
+          placeholder={t('home.searchPlaceholder')}
           value={searchQuery}
           onInput={(e) => setSearchQuery((e.target as HTMLInputElement).value)}
           class="input pl-12"
@@ -170,7 +173,7 @@ export function Home({ activeHouseholdId }: Props) {
       {error && (
         <div class="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-4">
           {error}
-          <button onClick={loadItems} class="ml-2 underline">Retry</button>
+          <button onClick={loadItems} class="ml-2 underline">{t('common.retry')}</button>
         </div>
       )}
 
@@ -193,7 +196,7 @@ export function Home({ activeHouseholdId }: Props) {
           </div>
           {isTruncated && (
             <p class="text-center text-sm text-slate-500 py-6">
-              Showing the {ITEMS_PAGE_SIZE} most recent of {totalCount}. Use search to find older items.
+              {t('home.showingRecent', { count: ITEMS_PAGE_SIZE, total: totalCount! })}
             </p>
           )}
         </>

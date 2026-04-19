@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { createHousehold, acceptInvite } from '../lib/api';
+import { useT } from '../lib/i18n';
 
 function errMsg(e: unknown, fallback: string): string {
   if (e && typeof e === 'object' && 'message' in e && typeof (e as any).message === 'string') {
@@ -15,6 +16,7 @@ interface Props {
 type Mode = 'choose' | 'create' | 'join';
 
 export function Onboarding({ onDone }: Props) {
+  const t = useT();
   const [mode, setMode] = useState<Mode>('choose');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -30,7 +32,7 @@ export function Onboarding({ onDone }: Props) {
       await createHousehold(name.trim());
       onDone();
     } catch (err) {
-      setError(errMsg(err, 'Failed to create household'));
+      setError(errMsg(err, t('onboarding.createFailed')));
       console.error('createHousehold error', err);
     } finally {
       setSubmitting(false);
@@ -46,7 +48,7 @@ export function Onboarding({ onDone }: Props) {
       await acceptInvite(code.trim().toUpperCase());
       onDone();
     } catch (err) {
-      setError(errMsg(err, 'Failed to join household'));
+      setError(errMsg(err, t('onboarding.joinFailed')));
       console.error('acceptInvite error', err);
     } finally {
       setSubmitting(false);
@@ -57,17 +59,17 @@ export function Onboarding({ onDone }: Props) {
     <div class="min-h-screen flex items-center justify-center p-6">
       <div class="w-full max-w-sm space-y-6">
         <header class="text-center">
-          <h1 class="text-3xl font-bold text-slate-100">Welcome</h1>
-          <p class="text-slate-400 mt-1">Get started with a household</p>
+          <h1 class="text-3xl font-bold text-slate-100">{t('onboarding.welcome')}</h1>
+          <p class="text-slate-400 mt-1">{t('onboarding.subtitle')}</p>
         </header>
 
         {mode === 'choose' && (
           <div class="space-y-3">
             <button onClick={() => setMode('create')} class="btn-primary w-full py-4">
-              Create a household
+              {t('onboarding.createOption')}
             </button>
             <button onClick={() => setMode('join')} class="btn-secondary w-full py-4">
-              Join with an invite code
+              {t('onboarding.joinOption')}
             </button>
           </div>
         )}
@@ -75,13 +77,13 @@ export function Onboarding({ onDone }: Props) {
         {mode === 'create' && (
           <form onSubmit={handleCreate} class="space-y-4">
             <div>
-              <label class="input-label" for="name">Household name</label>
+              <label class="input-label" for="name">{t('onboarding.householdName')}</label>
               <input
                 id="name"
                 type="text"
                 value={name}
                 onInput={(e) => setName((e.target as HTMLInputElement).value)}
-                placeholder="e.g. Home"
+                placeholder={t('onboarding.householdPlaceholder')}
                 class="input"
                 required
               />
@@ -93,10 +95,10 @@ export function Onboarding({ onDone }: Props) {
             )}
             <div class="flex gap-3">
               <button type="button" onClick={() => { setMode('choose'); setError(null); }} class="btn-secondary flex-1" disabled={submitting}>
-                Back
+                {t('common.back')}
               </button>
               <button type="submit" disabled={submitting || !name.trim()} class="btn-primary flex-1">
-                {submitting ? 'Creating…' : 'Create'}
+                {submitting ? t('onboarding.creating') : t('onboarding.create')}
               </button>
             </div>
           </form>
@@ -105,7 +107,7 @@ export function Onboarding({ onDone }: Props) {
         {mode === 'join' && (
           <form onSubmit={handleJoin} class="space-y-4">
             <div>
-              <label class="input-label" for="code">Invite code</label>
+              <label class="input-label" for="code">{t('onboarding.inviteCode')}</label>
               <input
                 id="code"
                 type="text"
@@ -124,10 +126,10 @@ export function Onboarding({ onDone }: Props) {
             )}
             <div class="flex gap-3">
               <button type="button" onClick={() => { setMode('choose'); setError(null); }} class="btn-secondary flex-1" disabled={submitting}>
-                Back
+                {t('common.back')}
               </button>
               <button type="submit" disabled={submitting || !code.trim()} class="btn-primary flex-1">
-                {submitting ? 'Joining…' : 'Join'}
+                {submitting ? t('onboarding.joining') : t('onboarding.join')}
               </button>
             </div>
           </form>

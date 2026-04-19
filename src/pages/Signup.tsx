@@ -1,8 +1,10 @@
 import { useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { signUp, signIn } from '../lib/auth';
+import { useT } from '../lib/i18n';
 
 export function Signup() {
+  const t = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -13,7 +15,7 @@ export function Signup() {
     e.preventDefault();
     if (!email || !password) return;
     if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError(t('auth.signup.passwordTooShort'));
       return;
     }
     try {
@@ -25,10 +27,10 @@ export function Signup() {
         await signIn(email, password);
         route('/', true);
       } catch {
-        setMessage('Account created. Check your email to confirm, then sign in.');
+        setMessage(t('auth.signup.checkEmail'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signup failed');
+      setError(err instanceof Error ? err.message : t('auth.signup.failed'));
     } finally {
       setSubmitting(false);
     }
@@ -38,13 +40,13 @@ export function Signup() {
     <div class="min-h-screen flex items-center justify-center p-6">
       <div class="w-full max-w-sm space-y-6">
         <header class="text-center">
-          <h1 class="text-3xl font-bold text-slate-100">Create account</h1>
-          <p class="text-slate-400 mt-1">Join or start a household</p>
+          <h1 class="text-3xl font-bold text-slate-100">{t('auth.signup.title')}</h1>
+          <p class="text-slate-400 mt-1">{t('auth.signup.subtitle')}</p>
         </header>
 
         <form onSubmit={handleSubmit} class="space-y-4">
           <div>
-            <label class="input-label" for="email">Email</label>
+            <label class="input-label" for="email">{t('auth.email')}</label>
             <input
               id="email"
               type="email"
@@ -57,7 +59,7 @@ export function Signup() {
           </div>
 
           <div>
-            <label class="input-label" for="password">Password</label>
+            <label class="input-label" for="password">{t('auth.password')}</label>
             <input
               id="password"
               type="password"
@@ -68,7 +70,7 @@ export function Signup() {
               minLength={8}
               required
             />
-            <p class="text-xs text-slate-500 mt-1">At least 8 characters.</p>
+            <p class="text-xs text-slate-500 mt-1">{t('auth.signup.passwordHint')}</p>
           </div>
 
           {error && (
@@ -87,13 +89,13 @@ export function Signup() {
             disabled={submitting || !email || !password}
             class="btn-primary w-full py-3"
           >
-            {submitting ? 'Creating…' : 'Create account'}
+            {submitting ? t('auth.signup.creating') : t('auth.signup.create')}
           </button>
         </form>
 
         <p class="text-center text-slate-400 text-sm">
-          Already have one?{' '}
-          <a href="/login" class="text-primary-400 hover:text-primary-300">Sign in</a>
+          {t('auth.signup.haveAccount')}{' '}
+          <a href="/login" class="text-primary-400 hover:text-primary-300">{t('auth.signIn')}</a>
         </p>
       </div>
     </div>

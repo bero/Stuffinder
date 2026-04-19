@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import { route } from 'preact-router';
 import { getItem, deleteItem, updateItem, getCategories, getLocationsWithPath } from '../lib/api';
 import { getPhotoUrl } from '../lib/supabase';
+import { useT, formatDate } from '../lib/i18n';
 import type { ItemWithDetails, Category, Location } from '../types/database';
 
 function BackIcon() {
@@ -43,6 +44,7 @@ interface Props {
 }
 
 export function ItemDetail({ id, activeHouseholdId }: Props) {
+  const t = useT();
   const [item, setItem] = useState<ItemWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +69,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
 
   useEffect(() => {
     if (!id) {
-      setError('Item not found');
+      setError(t('itemDetail.notFound'));
       setLoading(false);
       return;
     }
@@ -77,12 +79,12 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
         setLoading(true);
         const data = await getItem(id!);
         if (!data) {
-          setError('Item not found');
+          setError(t('itemDetail.notFound'));
         } else {
           setItem(data);
         }
       } catch (err) {
-        setError('Failed to load item');
+        setError(t('itemDetail.failedLoad'));
         console.error(err);
       } finally {
         setLoading(false);
@@ -161,7 +163,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
     if (!item || !activeHouseholdId) return;
 
     if (!name.trim()) {
-      setError('Please enter a name');
+      setError(t('addItem.pleaseEnterName'));
       return;
     }
 
@@ -190,7 +192,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
       setPhotoPreview(null);
       setEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save item');
+      setError(err instanceof Error ? err.message : t('itemDetail.failedSave'));
     } finally {
       setSaving(false);
     }
@@ -204,7 +206,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
       await deleteItem(item.id, item.photo_path);
       route('/');
     } catch (err) {
-      setError('Failed to delete item');
+      setError(t('itemDetail.failedDelete'));
       setDeleting(false);
       setShowDeleteConfirm(false);
     }
@@ -222,7 +224,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
         >
           <BackIcon />
         </button>
-        <h1 class="text-lg font-semibold">{editing ? 'Edit Item' : 'Item Details'}</h1>
+        <h1 class="text-lg font-semibold">{editing ? t('itemDetail.edit') : t('itemDetail.title')}</h1>
         {!editing && item ? (
           <div class="flex items-center gap-1">
             <button
@@ -280,7 +282,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               <div class="flex items-start gap-3">
                 <span class="text-2xl">📍</span>
                 <div>
-                  <p class="text-sm text-slate-400">Location</p>
+                  <p class="text-sm text-slate-400">{t('itemDetail.location')}</p>
                   <p class="text-slate-100">{item.location_full_path}</p>
                 </div>
               </div>
@@ -290,7 +292,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               <div class="flex items-start gap-3">
                 <span class="text-2xl">{item.category_icon || '🏷️'}</span>
                 <div>
-                  <p class="text-sm text-slate-400">Category</p>
+                  <p class="text-sm text-slate-400">{t('itemDetail.category')}</p>
                   <p class="text-slate-100">{item.category_name}</p>
                 </div>
               </div>
@@ -300,16 +302,16 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               <div class="flex items-start gap-3">
                 <span class="text-2xl">📝</span>
                 <div>
-                  <p class="text-sm text-slate-400">Description</p>
+                  <p class="text-sm text-slate-400">{t('itemDetail.description')}</p>
                   <p class="text-slate-100 whitespace-pre-wrap">{item.description}</p>
                 </div>
               </div>
             )}
 
             <div class="pt-4 border-t border-slate-700 text-sm text-slate-500">
-              <p>Added: {new Date(item.created_at).toLocaleDateString()}</p>
+              <p>{t('itemDetail.added', { date: formatDate(item.created_at) })}</p>
               {item.updated_at !== item.created_at && (
-                <p>Updated: {new Date(item.updated_at).toLocaleDateString()}</p>
+                <p>{t('itemDetail.updated', { date: formatDate(item.updated_at) })}</p>
               )}
             </div>
           </div>
@@ -318,7 +320,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
         <form onSubmit={handleSave} class="p-4 space-y-6">
           {/* Photo */}
           <div>
-            <label class="input-label">Photo</label>
+            <label class="input-label">{t('addItem.photo')}</label>
             <input
               ref={fileInputRef}
               type="file"
@@ -368,14 +370,14 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
                 class="w-full h-48 border-2 border-dashed border-slate-600 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-slate-500 hover:bg-slate-800/50 transition-colors"
               >
                 <CameraIcon />
-                <span class="text-slate-400">Tap to take photo</span>
+                <span class="text-slate-400">{t('addItem.tapToTakePhoto')}</span>
               </button>
             )}
           </div>
 
           {/* Name */}
           <div>
-            <label class="input-label" for="name">Name *</label>
+            <label class="input-label" for="name">{t('addItem.name')}</label>
             <input
               id="name"
               type="text"
@@ -389,7 +391,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
           {/* Location */}
           <div>
             <label class="input-label flex items-center gap-2" for="location">
-              Location
+              {t('addItem.location')}
               {optionsLoading && (
                 <span class="animate-spin rounded-full h-3 w-3 border-2 border-slate-400 border-t-transparent"></span>
               )}
@@ -401,7 +403,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               class="select"
               disabled={optionsLoading}
             >
-              <option value="">Select location...</option>
+              <option value="">{t('addItem.selectLocation')}</option>
               {locations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
                   {loc.icon} {loc.full_path}
@@ -413,7 +415,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
           {/* Category */}
           <div>
             <label class="input-label flex items-center gap-2" for="category">
-              Category
+              {t('addItem.category')}
               {optionsLoading && (
                 <span class="animate-spin rounded-full h-3 w-3 border-2 border-slate-400 border-t-transparent"></span>
               )}
@@ -425,7 +427,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               class="select"
               disabled={optionsLoading}
             >
-              <option value="">Select category...</option>
+              <option value="">{t('addItem.selectCategory')}</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.icon} {cat.name}
@@ -436,7 +438,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
 
           {/* Description */}
           <div>
-            <label class="input-label" for="description">Description (optional)</label>
+            <label class="input-label" for="description">{t('addItem.descriptionOptional')}</label>
             <textarea
               id="description"
               value={description}
@@ -459,7 +461,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               class="btn-secondary flex-1 py-4"
               disabled={saving}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -469,10 +471,10 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               {saving ? (
                 <span class="flex items-center justify-center gap-2">
                   <span class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></span>
-                  Saving...
+                  {t('common.saving')}
                 </span>
               ) : (
-                'Save'
+                t('common.save')
               )}
             </button>
           </div>
@@ -483,9 +485,9 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
       {showDeleteConfirm && (
         <div class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
           <div class="bg-slate-800 rounded-xl p-6 max-w-sm w-full">
-            <h3 class="text-lg font-semibold text-slate-100 mb-2">Delete Item?</h3>
+            <h3 class="text-lg font-semibold text-slate-100 mb-2">{t('itemDetail.deleteConfirmTitle')}</h3>
             <p class="text-slate-400 mb-6">
-              Are you sure you want to delete "{item?.name}"? This cannot be undone.
+              {t('itemDetail.deleteConfirmBody', { name: item?.name || '' })}
             </p>
             <div class="flex gap-3">
               <button
@@ -493,14 +495,14 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
                 class="btn-secondary flex-1"
                 disabled={deleting}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleDelete}
                 class="btn-danger flex-1"
                 disabled={deleting}
               >
-                {deleting ? 'Deleting...' : 'Delete'}
+                {deleting ? t('common.deleting') : t('common.delete')}
               </button>
             </div>
           </div>

@@ -1,8 +1,10 @@
 import { useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { signIn } from '../lib/auth';
+import { useT } from '../lib/i18n';
 
 export function Login() {
+  const t = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -17,7 +19,7 @@ export function Login() {
       await signIn(email, password);
       route('/', true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : t('auth.loginFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -27,13 +29,13 @@ export function Login() {
     <div class="min-h-screen flex items-center justify-center p-6">
       <div class="w-full max-w-sm space-y-6">
         <header class="text-center">
-          <h1 class="text-3xl font-bold text-slate-100">StuffFinder</h1>
-          <p class="text-slate-400 mt-1">Log in to your household</p>
+          <h1 class="text-3xl font-bold text-slate-100">{t('auth.login.title')}</h1>
+          <p class="text-slate-400 mt-1">{t('auth.login.subtitle')}</p>
         </header>
 
         <form onSubmit={handleSubmit} class="space-y-4">
           <div>
-            <label class="input-label" for="email">Email</label>
+            <label class="input-label" for="email">{t('auth.email')}</label>
             <input
               id="email"
               type="email"
@@ -46,7 +48,7 @@ export function Login() {
           </div>
 
           <div>
-            <label class="input-label" for="password">Password</label>
+            <label class="input-label" for="password">{t('auth.password')}</label>
             <input
               id="password"
               type="password"
@@ -69,13 +71,13 @@ export function Login() {
             disabled={submitting || !email || !password}
             class="btn-primary w-full py-3"
           >
-            {submitting ? 'Signing in…' : 'Sign in'}
+            {submitting ? t('auth.signingIn') : t('auth.signIn')}
           </button>
         </form>
 
         <p class="text-center text-slate-400 text-sm">
-          No account?{' '}
-          <a href="/signup" class="text-primary-400 hover:text-primary-300">Create one</a>
+          {t('auth.noAccount')}{' '}
+          <a href="/signup" class="text-primary-400 hover:text-primary-300">{t('auth.createOne')}</a>
         </p>
       </div>
     </div>
