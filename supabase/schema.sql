@@ -1,57 +1,141 @@
--- StuffFinder Database Schema for Supabase
--- Run this in the Supabase SQL Editor
+-- StuffFinder — consolidated full schema (current / v4)
+--
+-- Run in the Supabase SQL Editor on a FRESH project ("Run without RLS").
+-- This creates every table, policy, view, and RPC the app expects.
+-- Safe to re-run on a schema that already matches (idempotent guards used
+-- where practical) but NOT safe to run over an older partial schema — use
+-- the numbered migration files (schema_v2.sql → v3 → v4) to upgrade.
+--
+-- MAINTENANCE: whenever a new schema_vN.sql migration is added, mirror the
+-- change into this file. Fresh-install users depend on this file being the
+-- authoritative current shape. Keep the header's "current / vN" marker
+-- bumped to match the latest migration number.
+--
+-- After running this:
+--   1. Storage → create bucket "photos" → uncheck "Public bucket"
+--   2. Authentication → URL Configuration → set your Site URL
+--
+-- The storage policies at the bottom of this file restrict read/write on
+-- objects to members of the household whose id is the first folder in the
+-- object path: "{household_id}/{filename}.jpg".
 
--- Enable UUID extension (usually already enabled)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Categories table
--- Examples: Tools, Electronics, Documents, Clothes, Kitchen, etc.
-CREATE TABLE categories (
+-- ================================================================
+-- Households, members, invites
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS households (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
-    icon VARCHAR(10) DEFAULT '📦',  -- Emoji icon
-    color VARCHAR(7) DEFAULT '#6B7280',  -- Hex color for UI
-    sort_order INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    
-    CONSTRAINT categories_name_unique UNIQUE (name)
+    created_by UUID NOT NULL REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Locations table (hierarchical)
--- Examples: Garage, Garage > Shelf 1, Bedroom > Closet, etc.
-CREATE TABLE locations (
+CREATE TABLE IF NOT EXISTS household_members (
+    household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    role VARCHAR(20) NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'member')),
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (household_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS household_members_user_idx ON household_members(user_id);
+
+CREATE TABLE IF NOT EXISTS household_invites (
+    code VARCHAR(12) PRIMARY KEY,
+    household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+    created_by UUID NOT NULL REFERENCES auth.users(id),
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    used_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS household_invites_household_idx ON household_invites(household_id);
+
+-- SECURITY DEFINER to avoid recursion when the policy on household_members
+-- needs to ask "is this user a member of this household?".
+CREATE OR REPLACE FUNCTION is_household_member(h_id UUID)
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM household_members
+    WHERE household_id = h_id AND user_id = auth.uid()
+  );
+$$ LANGUAGE SQL SECURITY DEFINER STABLE;
+
+-- ================================================================
+-- Content tables (all per-household)
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    icon VARCHAR(10) DEFAULT '📦',
+    color VARCHAR(7) DEFAULT '#6B7280',
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (household_id, name)
+);
+CREATE INDEX IF NOT EXISTS categories_household_idx ON categories(household_id);
+
+CREATE TABLE IF NOT EXISTS locations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     parent_id UUID REFERENCES locations(id) ON DELETE SET NULL,
     icon VARCHAR(10) DEFAULT '📍',
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    
-    -- Prevent duplicate names under same parent
-    CONSTRAINT locations_name_parent_unique UNIQUE (name, parent_id)
+    UNIQUE (household_id, name, parent_id)
 );
+CREATE INDEX IF NOT EXISTS locations_household_idx ON locations(household_id);
 
--- Items table - the main content
-CREATE TABLE items (
+CREATE TABLE IF NOT EXISTS items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
     name VARCHAR(200) NOT NULL,
     description TEXT,
-    photo_path VARCHAR(500),  -- Path in Supabase Storage
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     location_id UUID REFERENCES locations(id) ON DELETE SET NULL,
+    created_by UUID REFERENCES auth.users(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS items_household_idx ON items(household_id);
+CREATE INDEX IF NOT EXISTS items_name_idx        ON items USING gin(to_tsvector('english', name));
+CREATE INDEX IF NOT EXISTS items_description_idx ON items USING gin(to_tsvector('english', COALESCE(description, '')));
+CREATE INDEX IF NOT EXISTS items_category_idx    ON items(category_id);
+CREATE INDEX IF NOT EXISTS items_location_idx    ON items(location_id);
 
--- Index for fast text search on items
-CREATE INDEX items_name_idx ON items USING gin(to_tsvector('english', name));
-CREATE INDEX items_description_idx ON items USING gin(to_tsvector('english', COALESCE(description, '')));
+CREATE TABLE IF NOT EXISTS item_photos (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+    path VARCHAR(500) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS item_photos_item_idx      ON item_photos(item_id, sort_order);
+CREATE INDEX IF NOT EXISTS item_photos_household_idx ON item_photos(household_id);
 
--- Index for filtering
-CREATE INDEX items_category_idx ON items(category_id);
-CREATE INDEX items_location_idx ON items(location_id);
+CREATE TABLE IF NOT EXISTS tags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+    name VARCHAR(50) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (household_id, name)
+);
+CREATE INDEX IF NOT EXISTS tags_household_idx ON tags(household_id);
 
--- Function to update updated_at timestamp
+CREATE TABLE IF NOT EXISTS item_tags (
+    item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    tag_id  UUID NOT NULL REFERENCES tags(id)  ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (item_id, tag_id)
+);
+CREATE INDEX IF NOT EXISTS item_tags_tag_idx ON item_tags(tag_id);
+
+-- Auto-touch items.updated_at on any UPDATE.
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -60,112 +144,329 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger to auto-update updated_at
+DROP TRIGGER IF EXISTS items_updated_at ON items;
 CREATE TRIGGER items_updated_at
     BEFORE UPDATE ON items
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- View for items with full location path (e.g., "Garage > Shelf 1")
-CREATE OR REPLACE VIEW items_with_details AS
+-- ================================================================
+-- View joining item → category, location (with full path), photo cover, tags
+-- security_invoker = on so the caller's RLS on base tables applies.
+-- ================================================================
+DROP FUNCTION IF EXISTS search_items(TEXT);
+DROP VIEW     IF EXISTS items_with_details CASCADE;
+
+CREATE VIEW items_with_details
+WITH (security_invoker = on)
+AS
 WITH RECURSIVE location_path AS (
-    -- Base case: locations without parent
-    SELECT 
-        id,
-        name,
-        parent_id,
-        name::TEXT AS full_path
-    FROM locations
-    WHERE parent_id IS NULL
-    
+    SELECT id, name, parent_id, household_id, name::TEXT AS full_path
+    FROM locations WHERE parent_id IS NULL
+
     UNION ALL
-    
-    -- Recursive case: locations with parent
-    SELECT 
-        l.id,
-        l.name,
-        l.parent_id,
-        (lp.full_path || ' > ' || l.name)::TEXT AS full_path
+
+    SELECT l.id, l.name, l.parent_id, l.household_id,
+           (lp.full_path || ' > ' || l.name)::TEXT
     FROM locations l
     INNER JOIN location_path lp ON l.parent_id = lp.id
 )
-SELECT 
+SELECT
     i.id,
+    i.household_id,
     i.name,
     i.description,
-    i.photo_path,
+    (SELECT p.path FROM item_photos p
+       WHERE p.item_id = i.id
+       ORDER BY p.sort_order, p.created_at
+       LIMIT 1) AS photo_path,
     i.created_at,
     i.updated_at,
-    c.id AS category_id,
-    c.name AS category_name,
-    c.icon AS category_icon,
+    c.id    AS category_id,
+    c.name  AS category_name,
+    c.icon  AS category_icon,
     c.color AS category_color,
-    l.id AS location_id,
-    l.name AS location_name,
-    lp.full_path AS location_full_path
+    l.id    AS location_id,
+    l.name  AS location_name,
+    lp.full_path AS location_full_path,
+    COALESCE(
+        (SELECT jsonb_agg(jsonb_build_object('id', t.id, 'name', t.name) ORDER BY t.name)
+         FROM item_tags it JOIN tags t ON t.id = it.tag_id
+         WHERE it.item_id = i.id),
+        '[]'::jsonb
+    ) AS tags
 FROM items i
 LEFT JOIN categories c ON i.category_id = c.id
-LEFT JOIN locations l ON i.location_id = l.id
+LEFT JOIN locations  l ON i.location_id = l.id
 LEFT JOIN location_path lp ON l.id = lp.id;
 
--- Insert some default categories
-INSERT INTO categories (name, icon, color, sort_order) VALUES
-    ('Tools', '🔧', '#EF4444', 1),
-    ('Electronics', '💻', '#3B82F6', 2),
-    ('Documents', '📄', '#10B981', 3),
-    ('Clothes', '👕', '#8B5CF6', 4),
-    ('Kitchen', '🍳', '#F59E0B', 5),
-    ('Sports', '⚽', '#06B6D4', 6),
-    ('Books', '📚', '#EC4899', 7),
-    ('Other', '📦', '#6B7280', 99);
+GRANT SELECT ON items_with_details TO authenticated;
 
--- Insert some default locations
-INSERT INTO locations (name, icon, sort_order) VALUES
-    ('Garage', '🏠', 1),
-    ('Bedroom', '🛏️', 2),
-    ('Living Room', '🛋️', 3),
-    ('Kitchen', '🍽️', 4),
-    ('Bathroom', '🚿', 5),
-    ('Attic', '🏚️', 6),
-    ('Basement', '🪜', 7),
-    ('Storage Unit', '📦', 8);
-
--- Row Level Security (RLS) - for single user, keep it simple
--- If you want multi-user later, you'd add user_id columns and proper policies
-
-ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE items ENABLE ROW LEVEL SECURITY;
-
--- For now, allow all operations (single user scenario)
--- Using anon key means anyone with the key can access
--- This is acceptable for a personal app
-
-CREATE POLICY "Allow all for categories" ON categories FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for locations" ON locations FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for items" ON items FOR ALL USING (true) WITH CHECK (true);
-
--- Grant access to the view
-GRANT SELECT ON items_with_details TO anon, authenticated;
-
--- Function for full-text search
+-- ================================================================
+-- search_items: LIKE search across name, description, category,
+-- location path, and tag names. Caller RLS still applies.
+-- ================================================================
 CREATE OR REPLACE FUNCTION search_items(search_query TEXT)
 RETURNS SETOF items_with_details AS $$
 BEGIN
     IF search_query IS NULL OR search_query = '' THEN
         RETURN QUERY SELECT * FROM items_with_details ORDER BY updated_at DESC;
     ELSE
-        RETURN QUERY 
-        SELECT iwd.* 
+        RETURN QUERY
+        SELECT iwd.*
         FROM items_with_details iwd
-        WHERE 
+        WHERE
             iwd.name ILIKE '%' || search_query || '%'
             OR iwd.description ILIKE '%' || search_query || '%'
             OR iwd.category_name ILIKE '%' || search_query || '%'
             OR iwd.location_full_path ILIKE '%' || search_query || '%'
-        ORDER BY 
+            OR EXISTS (
+                SELECT 1 FROM item_tags it
+                  JOIN tags t ON t.id = it.tag_id
+                 WHERE it.item_id = iwd.id
+                   AND t.name ILIKE '%' || search_query || '%'
+            )
+        ORDER BY
             CASE WHEN iwd.name ILIKE search_query || '%' THEN 0 ELSE 1 END,
             iwd.updated_at DESC;
     END IF;
 END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
+
+-- ================================================================
+-- RLS
+-- ================================================================
+ALTER TABLE households         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE household_members  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE household_invites  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE locations          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE items              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE item_photos        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tags               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE item_tags          ENABLE ROW LEVEL SECURITY;
+
+-- Drop + recreate to make this file idempotent.
+DROP POLICY IF EXISTS households_select  ON households;
+DROP POLICY IF EXISTS members_select     ON household_members;
+DROP POLICY IF EXISTS members_leave      ON household_members;
+DROP POLICY IF EXISTS invites_select     ON household_invites;
+DROP POLICY IF EXISTS invites_delete     ON household_invites;
+DROP POLICY IF EXISTS categories_all     ON categories;
+DROP POLICY IF EXISTS locations_all      ON locations;
+DROP POLICY IF EXISTS items_all          ON items;
+DROP POLICY IF EXISTS item_photos_all    ON item_photos;
+DROP POLICY IF EXISTS tags_all           ON tags;
+DROP POLICY IF EXISTS item_tags_all      ON item_tags;
+
+CREATE POLICY households_select ON households FOR SELECT TO authenticated
+    USING (is_household_member(id));
+
+CREATE POLICY members_select ON household_members FOR SELECT TO authenticated
+    USING (is_household_member(household_id));
+CREATE POLICY members_leave ON household_members FOR DELETE TO authenticated
+    USING (user_id = auth.uid());
+
+CREATE POLICY invites_select ON household_invites FOR SELECT TO authenticated
+    USING (is_household_member(household_id));
+CREATE POLICY invites_delete ON household_invites FOR DELETE TO authenticated
+    USING (is_household_member(household_id));
+
+CREATE POLICY categories_all ON categories FOR ALL TO authenticated
+    USING (is_household_member(household_id))
+    WITH CHECK (is_household_member(household_id));
+
+CREATE POLICY locations_all ON locations FOR ALL TO authenticated
+    USING (is_household_member(household_id))
+    WITH CHECK (is_household_member(household_id));
+
+CREATE POLICY items_all ON items FOR ALL TO authenticated
+    USING (is_household_member(household_id))
+    WITH CHECK (is_household_member(household_id));
+
+CREATE POLICY item_photos_all ON item_photos FOR ALL TO authenticated
+    USING (is_household_member(household_id))
+    WITH CHECK (is_household_member(household_id));
+
+CREATE POLICY tags_all ON tags FOR ALL TO authenticated
+    USING (is_household_member(household_id))
+    WITH CHECK (is_household_member(household_id));
+
+-- item_tags authorises via the owning item.
+CREATE POLICY item_tags_all ON item_tags FOR ALL TO authenticated
+    USING (EXISTS (
+        SELECT 1 FROM items i
+         WHERE i.id = item_tags.item_id
+           AND is_household_member(i.household_id)
+    ))
+    WITH CHECK (EXISTS (
+        SELECT 1 FROM items i
+         WHERE i.id = item_tags.item_id
+           AND is_household_member(i.household_id)
+    ));
+
+-- ================================================================
+-- RPCs invoked from the app
+-- ================================================================
+
+-- Create a household, add the caller as owner, seed default categories + locations.
+CREATE OR REPLACE FUNCTION create_household(h_name TEXT)
+RETURNS UUID AS $$
+DECLARE
+    new_id UUID;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    IF h_name IS NULL OR length(trim(h_name)) = 0 THEN
+        RAISE EXCEPTION 'Household name required';
+    END IF;
+
+    INSERT INTO households (name, created_by)
+    VALUES (trim(h_name), auth.uid())
+    RETURNING id INTO new_id;
+
+    INSERT INTO household_members (household_id, user_id, role)
+    VALUES (new_id, auth.uid(), 'owner');
+
+    INSERT INTO categories (household_id, name, icon, color, sort_order) VALUES
+        (new_id, 'Tools',       '🔧', '#EF4444', 1),
+        (new_id, 'Electronics', '💻', '#3B82F6', 2),
+        (new_id, 'Documents',   '📄', '#10B981', 3),
+        (new_id, 'Clothes',     '👕', '#8B5CF6', 4),
+        (new_id, 'Kitchen',     '🍳', '#F59E0B', 5),
+        (new_id, 'Sports',      '⚽', '#06B6D4', 6),
+        (new_id, 'Books',       '📚', '#EC4899', 7),
+        (new_id, 'Other',       '📦', '#6B7280', 99);
+
+    INSERT INTO locations (household_id, name, icon, sort_order) VALUES
+        (new_id, 'Garage',       '🏠', 1),
+        (new_id, 'Bedroom',      '🛏️', 2),
+        (new_id, 'Living Room',  '🛋️', 3),
+        (new_id, 'Kitchen',      '🍽️', 4),
+        (new_id, 'Bathroom',     '🚿', 5),
+        (new_id, 'Attic',        '🏚️', 6),
+        (new_id, 'Basement',     '🪜', 7),
+        (new_id, 'Storage Unit', '📦', 8);
+
+    RETURN new_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 8-char invite code, no visually confusing characters.
+CREATE OR REPLACE FUNCTION generate_invite_code()
+RETURNS TEXT AS $$
+DECLARE
+    chars TEXT := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    result TEXT := '';
+    i INT;
+BEGIN
+    FOR i IN 1..8 LOOP
+        result := result || substr(chars, 1 + floor(random() * length(chars))::int, 1);
+    END LOOP;
+    RETURN result;
+END;
 $$ LANGUAGE plpgsql;
+
+-- Create a 7-day invite; returns the code.
+CREATE OR REPLACE FUNCTION create_invite(h_id UUID)
+RETURNS TEXT AS $$
+DECLARE
+    new_code TEXT;
+BEGIN
+    IF NOT is_household_member(h_id) THEN
+        RAISE EXCEPTION 'Not a member of this household';
+    END IF;
+
+    LOOP
+        new_code := generate_invite_code();
+        BEGIN
+            INSERT INTO household_invites (code, household_id, created_by, expires_at)
+            VALUES (new_code, h_id, auth.uid(), NOW() + INTERVAL '7 days');
+            EXIT;
+        EXCEPTION WHEN unique_violation THEN
+            -- regenerate and try again
+        END;
+    END LOOP;
+
+    RETURN new_code;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Accept an invite; joins caller to the household. Returns household_id.
+CREATE OR REPLACE FUNCTION accept_invite(invite_code TEXT)
+RETURNS UUID AS $$
+DECLARE
+    v_code         TEXT;
+    v_household_id UUID;
+    v_used_at      TIMESTAMPTZ;
+    v_expires_at   TIMESTAMPTZ;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    v_code := upper(trim(invite_code));
+
+    SELECT household_id, used_at, expires_at
+    INTO v_household_id, v_used_at, v_expires_at
+    FROM household_invites
+    WHERE code = v_code;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Invalid invite code';
+    END IF;
+    IF v_used_at IS NOT NULL THEN
+        RAISE EXCEPTION 'Invite already used';
+    END IF;
+    IF v_expires_at < NOW() THEN
+        RAISE EXCEPTION 'Invite expired';
+    END IF;
+    IF EXISTS (SELECT 1 FROM household_members
+               WHERE household_id = v_household_id AND user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Already a member of this household';
+    END IF;
+
+    INSERT INTO household_members (household_id, user_id, role)
+    VALUES (v_household_id, auth.uid(), 'member');
+
+    UPDATE household_invites
+    SET used_at = NOW(), used_by = auth.uid()
+    WHERE code = v_code;
+
+    RETURN v_household_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ================================================================
+-- Storage policies on storage.objects
+-- Paths in the "photos" bucket look like: "{household_id}/{filename}".
+-- Access is granted if the first path component is a household the
+-- caller is a member of. Drop + recreate to stay idempotent.
+-- ================================================================
+DROP POLICY IF EXISTS household_read_photos   ON storage.objects;
+DROP POLICY IF EXISTS household_insert_photos ON storage.objects;
+DROP POLICY IF EXISTS household_delete_photos ON storage.objects;
+
+CREATE POLICY household_read_photos ON storage.objects FOR SELECT TO authenticated
+    USING (
+        bucket_id = 'photos'
+        AND (storage.foldername(name))[1]::uuid IN (
+            SELECT household_id FROM household_members WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY household_insert_photos ON storage.objects FOR INSERT TO authenticated
+    WITH CHECK (
+        bucket_id = 'photos'
+        AND (storage.foldername(name))[1]::uuid IN (
+            SELECT household_id FROM household_members WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY household_delete_photos ON storage.objects FOR DELETE TO authenticated
+    USING (
+        bucket_id = 'photos'
+        AND (storage.foldername(name))[1]::uuid IN (
+            SELECT household_id FROM household_members WHERE user_id = auth.uid()
+        )
+    );

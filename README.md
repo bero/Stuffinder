@@ -36,11 +36,15 @@ A PWA to catalog and find your belongings. Take a photo, tag it with a location 
 ### 1.2 Run the schema
 
 1. In the dashboard, open **SQL Editor** → **New query**.
-2. Copy the full contents of `supabase/schema_v2.sql` and paste.
+2. Copy the full contents of `supabase/schema.sql` and paste. This is the consolidated current schema — always up to date.
 3. Click **Run**. If prompted, choose **Run without RLS** (the script is DDL and needs the privileged role).
 4. Expected result: `Success. No rows returned.` — all tables, RLS policies, and RPCs created.
 
-The schema creates: `households`, `household_members`, `household_invites`, `categories`, `locations`, `items`, the `items_with_details` view, and the RPCs `create_household`, `create_invite`, `accept_invite`, `search_items`.
+The schema creates: `households`, `household_members`, `household_invites`, `categories`, `locations`, `items`, `item_photos`, `tags`, `item_tags`, the `items_with_details` view, and the RPCs `create_household`, `create_invite`, `accept_invite`, `search_items`.
+
+If you're **upgrading an existing database** (not starting fresh), run the numbered migration files instead: `schema_v2.sql` → `schema_v3.sql` → `schema_v4.sql`. Each one is non-destructive from its predecessor.
+
+> **Maintenance rule for contributors**: when you add a new `schema_vN.sql` migration, mirror the same change into `schema.sql` in the same commit. The consolidated file must always reflect the latest shape, otherwise fresh installs drift from upgraded databases.
 
 ### 1.3 Storage bucket
 
@@ -50,7 +54,7 @@ The schema creates: `households`, `household_members`, `household_invites`, `cat
    ```sql
    UPDATE storage.buckets SET public = false WHERE id = 'photos';
    ```
-4. The storage RLS policies (at the bottom of `schema_v2.sql`) restrict access to `{household_id}/...` paths for members of that household.
+4. The storage RLS policies (at the bottom of `schema.sql`) restrict access to `{household_id}/...` paths for members of that household.
 
 ### 1.4 Auth settings
 
@@ -280,7 +284,10 @@ stuffinder/
 │   ├── App.tsx                  # Route gate (auth → onboarding → main)
 │   └── main.tsx
 ├── supabase/
-│   └── schema_v2.sql            # Current schema (destructive migration)
+│   ├── schema.sql               # Consolidated current schema — run on fresh projects
+│   ├── schema_v2.sql            # Migration: v1 → multi-household
+│   ├── schema_v3.sql            # Migration: add multi-photo
+│   └── schema_v4.sql            # Migration: add tags
 ├── index.html
 ├── vite.config.ts
 └── tailwind.config.js
