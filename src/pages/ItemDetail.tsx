@@ -1,10 +1,19 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { route } from 'preact-router';
-import { getItem, deleteItem, updateItem, getCategories, getLocationsWithPath } from '../lib/api';
-import { getPhotoUrl } from '../lib/supabase';
+import {
+  getItem,
+  deleteItem,
+  updateItem,
+  getCategories,
+  getLocationsWithPath,
+  getItemPhotos,
+  addItemPhoto,
+  deleteItemPhoto,
+} from '../lib/api';
+import { prefetchPhotoUrls } from '../lib/supabase';
 import { useT, formatDate } from '../lib/i18n';
 import { QuickCreateCategory, QuickCreateLocation } from '../components/QuickCreate';
-import type { ItemWithDetails, Category, Location } from '../types/database';
+import type { ItemWithDetails, ItemPhoto, Category, Location } from '../types/database';
 
 function BackIcon() {
   return (
@@ -34,7 +43,27 @@ function CameraIcon() {
   return (
     <svg class="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
       <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ dir }: { dir: 'left' | 'right' }) {
+  return (
+    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d={dir === 'left' ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'}
+      />
     </svg>
   );
 }
@@ -42,6 +71,14 @@ function CameraIcon() {
 interface Props {
   id?: string;
   activeHouseholdId?: string;
+}
+
+interface StagedPhoto {
+  id: string; // either existing photo id OR a local temp id for newly added
+  kind: 'existing' | 'new';
+  url: string; // signed URL (existing) OR object URL (new)
+  path?: string; // existing only
+  file?: File; // new only
 }
 
 export function ItemDetail({ id, activeHouseholdId }: Props) {
@@ -52,23 +89,56 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Edit mode state
+  // View-mode photos + carousel state.
+  const [photos, setPhotos] = useState<ItemPhoto[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(new Map());
+  const [carouselIndex, setCarouselIndex] = useState(0);
+
+  // Edit-mode state.
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [locationId, setLocationId] = useState('');
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
+  const [pendingDeletes, setPendingDeletes] = useState<Array<{ id: string; path: string }>>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Array<Location & { full_path: string }>>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [showNewLocation, setShowNewLocation] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLDivElement>(null);
+
+  function scrollToIndex(i: number) {
+    const el = galleryRef.current;
+    if (!el) return;
+    const target = Math.max(0, Math.min(i, photos.length - 1));
+    // Optimistic update so chevron-disabled state and dots flip immediately.
+    setCarouselIndex(target);
+    el.scrollTo({ left: target * el.clientWidth, behavior: 'smooth' });
+  }
+
+  function handleGalleryScroll() {
+    const el = galleryRef.current;
+    if (!el || el.clientWidth === 0) return;
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    if (i !== carouselIndex) setCarouselIndex(i);
+  }
+
+  // Keyboard arrow keys navigate when in view mode on desktop.
+  useEffect(() => {
+    if (editing) return;
+    if (photos.length < 2) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowLeft') scrollToIndex(carouselIndex - 1);
+      else if (e.key === 'ArrowRight') scrollToIndex(carouselIndex + 1);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editing, photos.length, carouselIndex]);
 
   useEffect(() => {
     if (!id) {
@@ -80,12 +150,16 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
     async function loadItem() {
       try {
         setLoading(true);
-        const data = await getItem(id!);
+        const [data, itemPhotos] = await Promise.all([getItem(id!), getItemPhotos(id!)]);
         if (!data) {
           setError(t('itemDetail.notFound'));
-        } else {
-          setItem(data);
+          return;
         }
+        setItem(data);
+        setPhotos(itemPhotos);
+        setCarouselIndex(0);
+        const urls = await prefetchPhotoUrls(itemPhotos.map((p) => p.path));
+        setPhotoUrls(urls);
       } catch (err) {
         setError(t('itemDetail.failedLoad'));
         console.error(err);
@@ -97,18 +171,6 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
     loadItem();
   }, [id]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!item) {
-      setPhotoUrl(null);
-      return;
-    }
-    getPhotoUrl(item.photo_path).then((url) => {
-      if (!cancelled) setPhotoUrl(url);
-    });
-    return () => { cancelled = true; };
-  }, [item?.photo_path]);
-
   async function enterEditMode() {
     if (!item || !activeHouseholdId) return;
 
@@ -116,8 +178,15 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
     setDescription(item.description || '');
     setCategoryId(item.category_id || '');
     setLocationId(item.location_id || '');
-    setPhoto(null);
-    setPhotoPreview(null);
+
+    const staged: StagedPhoto[] = photos.map((p) => ({
+      id: p.id,
+      kind: 'existing',
+      url: photoUrls.get(p.path) || '',
+      path: p.path,
+    }));
+    setStagedPhotos(staged);
+    setPendingDeletes([]);
     setError(null);
     setEditing(true);
 
@@ -137,34 +206,42 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
   }
 
   function cancelEdit() {
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setPhoto(null);
-    setPhotoPreview(null);
+    // Revoke object URLs for any unsaved new photos.
+    stagedPhotos.forEach((sp) => {
+      if (sp.kind === 'new') URL.revokeObjectURL(sp.url);
+    });
+    setStagedPhotos([]);
+    setPendingDeletes([]);
     setError(null);
     setEditing(false);
   }
 
   function handlePhotoChange(e: Event) {
     const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (file) {
-      if (photoPreview) URL.revokeObjectURL(photoPreview);
-      setPhoto(file);
-      setPhotoPreview(URL.createObjectURL(file));
-    }
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
+    const added: StagedPhoto[] = files.map((file, i) => ({
+      id: `new-${Date.now()}-${i}`,
+      kind: 'new',
+      url: URL.createObjectURL(file),
+      file,
+    }));
+    setStagedPhotos((prev) => [...prev, ...added]);
+    input.value = '';
   }
 
-  function removeNewPhoto() {
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setPhoto(null);
-    setPhotoPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  function removeStaged(sp: StagedPhoto) {
+    if (sp.kind === 'new') {
+      URL.revokeObjectURL(sp.url);
+    } else {
+      setPendingDeletes((prev) => [...prev, { id: sp.id, path: sp.path! }]);
+    }
+    setStagedPhotos((prev) => prev.filter((x) => x.id !== sp.id));
   }
 
   async function handleSave(e: Event) {
     e.preventDefault();
     if (!item || !activeHouseholdId) return;
-
     if (!name.trim()) {
       setError(t('addItem.pleaseEnterName'));
       return;
@@ -174,25 +251,48 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
       setSaving(true);
       setError(null);
 
-      await updateItem(
-        item.id,
-        activeHouseholdId,
-        {
-          name: name.trim(),
-          description: description.trim() || undefined,
-          category_id: categoryId || undefined,
-          location_id: locationId || undefined,
-          photo: photo || undefined,
-        },
-        item.photo_path,
-      );
+      // 1. Update the item's plain fields.
+      await updateItem(item.id, {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        category_id: categoryId || undefined,
+        location_id: locationId || undefined,
+      });
 
-      const refreshed = await getItem(item.id);
+      // 2. Delete the photos the user removed.
+      for (const del of pendingDeletes) {
+        try {
+          await deleteItemPhoto(del.id, del.path);
+        } catch (err) {
+          console.warn('Failed to delete photo', err);
+        }
+      }
+
+      // 3. Upload any newly added photos, appending at the end of the order.
+      const existingKept = stagedPhotos.filter((p) => p.kind === 'existing');
+      let sortIndex = existingKept.length;
+      for (const sp of stagedPhotos) {
+        if (sp.kind !== 'new' || !sp.file) continue;
+        await addItemPhoto(item.id, activeHouseholdId, sp.file, sortIndex++);
+      }
+
+      // 4. Refresh state from server (fresh signed URLs for new photos).
+      const [refreshed, freshPhotos] = await Promise.all([
+        getItem(item.id),
+        getItemPhotos(item.id),
+      ]);
       if (refreshed) setItem(refreshed);
+      setPhotos(freshPhotos);
+      setCarouselIndex(0);
+      const urls = await prefetchPhotoUrls(freshPhotos.map((p) => p.path));
+      setPhotoUrls(urls);
 
-      if (photoPreview) URL.revokeObjectURL(photoPreview);
-      setPhoto(null);
-      setPhotoPreview(null);
+      // Clean up any remaining object URLs.
+      stagedPhotos.forEach((sp) => {
+        if (sp.kind === 'new') URL.revokeObjectURL(sp.url);
+      });
+      setStagedPhotos([]);
+      setPendingDeletes([]);
       setEditing(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('itemDetail.failedSave'));
@@ -203,10 +303,9 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
 
   async function handleDelete() {
     if (!item) return;
-
     try {
       setDeleting(true);
-      await deleteItem(item.id, item.photo_path);
+      await deleteItem(item.id);
       route('/');
     } catch (err) {
       setError(t('itemDetail.failedDelete'));
@@ -215,11 +314,8 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
     }
   }
 
-  const displayPhoto = photoPreview || photoUrl;
-
   return (
     <div class="min-h-screen">
-      {/* Header */}
       <header class="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center justify-between safe-top z-10">
         <button
           onClick={() => (editing ? cancelEdit() : route('/'))}
@@ -233,14 +329,14 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
             <button
               onClick={enterEditMode}
               class="p-1 text-slate-300 hover:text-slate-100"
-              aria-label="Edit"
+              aria-label={t('common.edit')}
             >
               <PencilIcon />
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
               class="p-1 -mr-1 text-red-400 hover:text-red-300"
-              aria-label="Delete"
+              aria-label={t('common.delete')}
             >
               <TrashIcon />
             </button>
@@ -262,20 +358,69 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
         </div>
       ) : item && !editing ? (
         <div>
-          {/* Photo */}
-          {photoUrl ? (
-            <div class="aspect-square bg-slate-800">
-              <img
-                src={photoUrl}
-                alt={item.name}
-                class="w-full h-full object-contain"
-              />
+          {/* Gallery: horizontal scroll-snap, swipable on touch, chevrons on desktop */}
+          <div class="relative bg-slate-800">
+            <div
+              ref={galleryRef}
+              onScroll={handleGalleryScroll}
+              class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as any}
+            >
+              {photos.length === 0 ? (
+                <div class="flex-shrink-0 w-full aspect-square flex items-center justify-center snap-center">
+                  <span class="text-8xl">{item.category_icon || '📦'}</span>
+                </div>
+              ) : (
+                photos.map((p) => {
+                  const url = photoUrls.get(p.path);
+                  return (
+                    <div key={p.id} class="flex-shrink-0 w-full aspect-square snap-center">
+                      {url ? (
+                        <img src={url} alt="" class="w-full h-full object-contain" />
+                      ) : (
+                        <div class="w-full h-full flex items-center justify-center">
+                          <span class="text-8xl">{item.category_icon || '📦'}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
-          ) : (
-            <div class="aspect-square bg-slate-800 flex items-center justify-center">
-              <span class="text-8xl">{item.category_icon || '📦'}</span>
-            </div>
-          )}
+
+            {photos.length > 1 && (
+              <>
+                <button
+                  onClick={() => scrollToIndex(carouselIndex - 1)}
+                  class="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-slate-900/70 hover:bg-slate-900 rounded-full text-slate-200 z-10 disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Previous"
+                  disabled={carouselIndex === 0}
+                >
+                  <ChevronIcon dir="left" />
+                </button>
+                <button
+                  onClick={() => scrollToIndex(carouselIndex + 1)}
+                  class="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-slate-900/70 hover:bg-slate-900 rounded-full text-slate-200 z-10 disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Next"
+                  disabled={carouselIndex === photos.length - 1}
+                >
+                  <ChevronIcon dir="right" />
+                </button>
+                <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 bg-slate-900/60 rounded-full px-2 py-1">
+                  {photos.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => scrollToIndex(i)}
+                      class={`w-2 h-2 rounded-full transition-colors ${
+                        i === carouselIndex ? 'bg-white' : 'bg-white/40'
+                      }`}
+                      aria-label={`Photo ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Details */}
           <div class="p-4 space-y-4">
@@ -321,7 +466,6 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
         </div>
       ) : item && editing ? (
         <form onSubmit={handleSave} class="p-4 space-y-6">
-          {/* Photo */}
           <div>
             <label class="input-label">{t('addItem.photo')}</label>
             <input
@@ -329,44 +473,12 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               type="file"
               accept="image/*"
               capture="environment"
+              multiple
               onChange={handlePhotoChange}
               class="hidden"
             />
 
-            {displayPhoto ? (
-              <div class="relative">
-                <img
-                  src={displayPhoto}
-                  alt="Preview"
-                  class="w-full h-48 object-cover rounded-xl"
-                />
-                <div class="absolute top-2 right-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    class="p-2 bg-slate-900/80 rounded-full text-slate-300 hover:text-white"
-                    aria-label="Replace photo"
-                  >
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
-                    </svg>
-                  </button>
-                  {photoPreview && (
-                    <button
-                      type="button"
-                      onClick={removeNewPhoto}
-                      class="p-2 bg-slate-900/80 rounded-full text-slate-300 hover:text-white"
-                      aria-label="Discard new photo"
-                    >
-                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
+            {stagedPhotos.length === 0 ? (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -375,10 +487,33 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
                 <CameraIcon />
                 <span class="text-slate-400">{t('addItem.tapToTakePhoto')}</span>
               </button>
+            ) : (
+              <div class="grid grid-cols-3 gap-2">
+                {stagedPhotos.map((sp) => (
+                  <div key={sp.id} class="relative aspect-square">
+                    <img src={sp.url} alt="" class="w-full h-full object-cover rounded-lg" />
+                    <button
+                      type="button"
+                      onClick={() => removeStaged(sp)}
+                      class="absolute top-1 right-1 p-1 bg-slate-900/80 rounded-full text-slate-200 hover:text-white"
+                      aria-label={t('common.delete')}
+                    >
+                      <XIcon />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  class="aspect-square border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center text-slate-400 hover:border-slate-500 hover:bg-slate-800/50 transition-colors"
+                  aria-label={t('addItem.tapToTakePhoto')}
+                >
+                  <CameraIcon />
+                </button>
+              </div>
             )}
           </div>
 
-          {/* Name */}
           <div>
             <label class="input-label" for="name">{t('addItem.name')}</label>
             <input
@@ -391,7 +526,6 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
             />
           </div>
 
-          {/* Location */}
           <div>
             <label class="input-label flex items-center gap-2" for="location">
               {t('addItem.location')}
@@ -427,7 +561,6 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
             </div>
           </div>
 
-          {/* Category */}
           <div>
             <label class="input-label flex items-center gap-2" for="category">
               {t('addItem.category')}
@@ -463,7 +596,6 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
             </div>
           </div>
 
-          {/* Description */}
           <div>
             <label class="input-label" for="description">{t('addItem.descriptionOptional')}</label>
             <textarea
@@ -534,7 +666,6 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
         />
       )}
 
-      {/* Delete confirmation modal */}
       {showDeleteConfirm && (
         <div class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
           <div class="bg-slate-800 rounded-xl p-6 max-w-sm w-full">

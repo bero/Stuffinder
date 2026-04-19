@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { route } from 'preact-router';
-import { createItem, getCategories, getLocationsWithPath } from '../lib/api';
+import { createItem, addItemPhoto, deleteItem, getCategories, getLocationsWithPath } from '../lib/api';
 import { useT } from '../lib/i18n';
 import { QuickCreateCategory, QuickCreateLocation } from '../components/QuickCreate';
 import type { Category, Location } from '../types/database';
 
 function CameraIcon() {
   return (
-    <svg class="w-12 h-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+    <svg class="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
       <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
       <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
     </svg>
@@ -22,6 +22,14 @@ function BackIcon() {
   );
 }
 
+function XIcon() {
+  return (
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
 interface Props {
   activeHouseholdId?: string;
 }
@@ -32,18 +40,16 @@ export function AddItem({ activeHouseholdId }: Props) {
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [locationId, setLocationId] = useState('');
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<Array<{ file: File; preview: string }>>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Array<Location & { full_path: string }>>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [showNewLocation, setShowNewLocation] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Load categories and locations
+
   useEffect(() => {
     if (!activeHouseholdId) return;
     async function loadData() {
@@ -60,38 +66,33 @@ export function AddItem({ activeHouseholdId }: Props) {
     }
     loadData();
   }, [activeHouseholdId]);
-  
-  // Handle photo selection
+
+  // Clean up object URLs when photos change or on unmount.
+  useEffect(() => () => {
+    photos.forEach((p) => URL.revokeObjectURL(p.preview));
+  }, []);
+
   function handlePhotoChange(e: Event) {
     const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    
-    if (file) {
-      setPhoto(file);
-      // Create preview URL
-      const url = URL.createObjectURL(file);
-      setPhotoPreview(url);
-    }
+    const files = Array.from(input.files || []);
+    if (files.length === 0) return;
+    const newEntries = files.map((file) => ({ file, preview: URL.createObjectURL(file) }));
+    setPhotos((prev) => [...prev, ...newEntries]);
+    input.value = ''; // allow selecting the same file again later
   }
-  
-  // Open camera/file picker
-  function openCamera() {
+
+  function removePhotoAt(index: number) {
+    setPhotos((prev) => {
+      const removed = prev[index];
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function openPicker() {
     fileInputRef.current?.click();
   }
-  
-  // Remove photo
-  function removePhoto() {
-    setPhoto(null);
-    if (photoPreview) {
-      URL.revokeObjectURL(photoPreview);
-      setPhotoPreview(null);
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  }
-  
-  // Save item
+
   async function handleSubmit(e: Event) {
     e.preventDefault();
 
@@ -99,37 +100,45 @@ export function AddItem({ activeHouseholdId }: Props) {
       setError(t('addItem.noHousehold'));
       return;
     }
-
     if (!name.trim()) {
       setError(t('addItem.pleaseEnterName'));
       return;
     }
 
+    let createdId: string | null = null;
     try {
       setSaving(true);
       setError(null);
 
-      await createItem(activeHouseholdId, {
+      const item = await createItem(activeHouseholdId, {
         name: name.trim(),
         description: description.trim() || undefined,
         category_id: categoryId || undefined,
         location_id: locationId || undefined,
-        photo: photo || undefined,
       });
+      createdId = item.id;
+
+      for (let i = 0; i < photos.length; i++) {
+        await addItemPhoto(item.id, activeHouseholdId, photos[i].file, i);
+      }
 
       route('/');
     } catch (err) {
+      // If creation succeeded but photos failed partway, roll back the item so
+      // we don't leave a phantom row.
+      if (createdId) {
+        try { await deleteItem(createdId); } catch { /* best-effort */ }
+      }
       setError(err instanceof Error ? err.message : t('addItem.failedSave'));
     } finally {
       setSaving(false);
     }
   }
-  
+
   return (
     <div class="min-h-screen">
-      {/* Header */}
       <header class="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-4 safe-top">
-        <button 
+        <button
           onClick={() => route('/')}
           class="p-1 -ml-1 text-slate-400 hover:text-slate-200"
         >
@@ -139,7 +148,7 @@ export function AddItem({ activeHouseholdId }: Props) {
       </header>
 
       <form onSubmit={handleSubmit} class="p-4 space-y-6">
-        {/* Photo capture */}
+        {/* Photos */}
         <div>
           <label class="input-label">{t('addItem.photo')}</label>
           <input
@@ -147,36 +156,44 @@ export function AddItem({ activeHouseholdId }: Props) {
             type="file"
             accept="image/*"
             capture="environment"
+            multiple
             onChange={handlePhotoChange}
             class="hidden"
           />
-          
-          {photoPreview ? (
-            <div class="relative">
-              <img 
-                src={photoPreview} 
-                alt="Preview" 
-                class="w-full h-48 object-cover rounded-xl"
-              />
-              <button
-                type="button"
-                onClick={removePhoto}
-                class="absolute top-2 right-2 p-2 bg-slate-900/80 rounded-full text-slate-300 hover:text-white"
-              >
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          ) : (
+
+          {photos.length === 0 ? (
             <button
               type="button"
-              onClick={openCamera}
+              onClick={openPicker}
               class="w-full h-48 border-2 border-dashed border-slate-600 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-slate-500 hover:bg-slate-800/50 transition-colors"
             >
               <CameraIcon />
               <span class="text-slate-400">{t('addItem.tapToTakePhoto')}</span>
             </button>
+          ) : (
+            <div class="grid grid-cols-3 gap-2">
+              {photos.map((p, i) => (
+                <div key={p.preview} class="relative aspect-square">
+                  <img src={p.preview} alt="" class="w-full h-full object-cover rounded-lg" />
+                  <button
+                    type="button"
+                    onClick={() => removePhotoAt(i)}
+                    class="absolute top-1 right-1 p-1 bg-slate-900/80 rounded-full text-slate-200 hover:text-white"
+                    aria-label={t('common.delete')}
+                  >
+                    <XIcon />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={openPicker}
+                class="aspect-square border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center text-slate-400 hover:border-slate-500 hover:bg-slate-800/50 transition-colors"
+                aria-label={t('addItem.tapToTakePhoto')}
+              >
+                <CameraIcon />
+              </button>
+            </div>
           )}
         </div>
 
@@ -264,15 +281,14 @@ export function AddItem({ activeHouseholdId }: Props) {
             class="input resize-none"
           />
         </div>
-        
+
         {/* Error message */}
         {error && (
           <div class="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">
             {error}
           </div>
         )}
-        
-        {/* Submit button */}
+
         <button
           type="submit"
           disabled={saving || !name.trim()}

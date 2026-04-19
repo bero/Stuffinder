@@ -53,12 +53,20 @@ export interface Item {
   household_id: string;
   name: string;
   description: string | null;
-  photo_path: string | null;
   category_id: string | null;
   location_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ItemPhoto {
+  id: string;
+  item_id: string;
+  household_id: string;
+  path: string;
+  sort_order: number;
+  created_at: string;
 }
 
 export interface ItemWithDetails {
@@ -83,7 +91,6 @@ export interface ItemFormData {
   description?: string;
   category_id?: string;
   location_id?: string;
-  photo?: File;
 }
 
 export interface CategoryFormData {

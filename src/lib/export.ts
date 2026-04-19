@@ -1,5 +1,5 @@
+import { supabase, prefetchPhotoUrls } from './supabase';
 import { getAllItems, getCategories, getLocations } from './api';
-import { prefetchPhotoUrls } from './supabase';
 import { rowsToCsv, downloadBlob } from './csv';
 
 export type ExportPhase = 'loading' | 'photos' | 'zipping';
@@ -12,30 +12,46 @@ export interface ExportProgress {
 
 const CONCURRENCY = 5;
 
-// Produce a self-contained zip: items.csv + photos/ directory.
-// Every row's PhotoFile column matches the file path inside the zip.
+// Produce a self-contained zip: items.csv + items.json + categories.json +
+// locations.json + photos/ directory. Every photo is referenced by path
+// inside the zip so the archive is usable standalone.
 export async function exportHouseholdZip(
   householdId: string,
   householdName: string,
   onProgress?: (p: ExportProgress) => void,
 ): Promise<void> {
   onProgress?.({ phase: 'loading', current: 0, total: 1 });
-  // Lazy-load JSZip so the 100KB dependency doesn't hit the main bundle.
-  const [{ default: JSZip }, items, categories, locations] = await Promise.all([
+
+  // Lazy-load JSZip so the dependency doesn't hit the main bundle.
+  const [{ default: JSZip }, items, categories, locations, photosResult] = await Promise.all([
     import('jszip'),
     getAllItems(householdId),
     getCategories(householdId),
     getLocations(householdId),
+    supabase.from('item_photos').select('*').eq('household_id', householdId).order('sort_order'),
   ]);
+
+  if (photosResult.error) throw photosResult.error;
+  const allPhotos = photosResult.data || [];
+
+  // Group photos by item_id for quick lookup.
+  const photosByItem = new Map<string, Array<{ path: string; sort_order: number }>>();
+  for (const p of allPhotos) {
+    const list = photosByItem.get(p.item_id) || [];
+    list.push({ path: p.path, sort_order: p.sort_order });
+    photosByItem.set(p.item_id, list);
+  }
+
   onProgress?.({ phase: 'loading', current: 1, total: 1 });
 
   const zip = new JSZip();
 
-  // Build CSV referencing local file paths inside the zip.
+  // CSV: one row per item, PhotoFiles semicolon-joined for spreadsheet use.
   const csv = rowsToCsv(
-    ['Name', 'Description', 'Category', 'Location', 'Added', 'Updated', 'PhotoFile'],
+    ['Name', 'Description', 'Category', 'Location', 'Added', 'Updated', 'PhotoFiles'],
     items.map((i) => {
-      const photoFile = i.photo_path ? `photos/${i.photo_path.split('/').pop()}` : '';
+      const itemPhotos = photosByItem.get(i.id) || [];
+      const photoRefs = itemPhotos.map((p) => `photos/${p.path.split('/').pop()}`).join('; ');
       return [
         i.name,
         i.description || '',
@@ -43,18 +59,21 @@ export async function exportHouseholdZip(
         i.location_full_path || '',
         new Date(i.created_at).toISOString(),
         new Date(i.updated_at).toISOString(),
-        photoFile,
+        photoRefs,
       ];
     }),
   );
   zip.file('items.csv', '\uFEFF' + csv);
 
-  // Full-fidelity JSON dumps — use these to restore into another project.
-  // Items JSON rewrites photo_path to the filename inside the zip so the archive is self-contained.
-  const itemsJson = items.map((i) => ({
-    ...i,
-    photo_path: i.photo_path ? `photos/${i.photo_path.split('/').pop()}` : null,
-  }));
+  // JSON: full fidelity, photos as an array of archive-relative paths.
+  const itemsJson = items.map((i) => {
+    const itemPhotos = photosByItem.get(i.id) || [];
+    return {
+      ...i,
+      photo_path: undefined, // derived field from the view — don't include in backup
+      photos: itemPhotos.map((p) => `photos/${p.path.split('/').pop()}`),
+    };
+  });
   zip.file('items.json', JSON.stringify(itemsJson, null, 2));
   zip.file('categories.json', JSON.stringify(categories, null, 2));
   zip.file('locations.json', JSON.stringify(locations, null, 2));
@@ -65,11 +84,12 @@ export async function exportHouseholdZip(
         household_id: householdId,
         household_name: householdName,
         exported_at: new Date().toISOString(),
-        version: 1,
+        version: 2, // photos are now an array per item
         counts: {
           items: items.length,
           categories: categories.length,
           locations: locations.length,
+          photos: allPhotos.length,
         },
       },
       null,
@@ -77,38 +97,35 @@ export async function exportHouseholdZip(
     ),
   );
 
-  const withPhotos = items.filter((i) => !!i.photo_path);
-  onProgress?.({ phase: 'photos', current: 0, total: withPhotos.length });
+  onProgress?.({ phase: 'photos', current: 0, total: allPhotos.length });
 
-  if (withPhotos.length > 0) {
-    // Batch-sign all URLs up front.
-    const urlMap = await prefetchPhotoUrls(withPhotos.map((i) => i.photo_path!));
+  if (allPhotos.length > 0) {
+    const urlMap = await prefetchPhotoUrls(allPhotos.map((p) => p.path));
 
-    // Parallel downloads, bounded concurrency.
-    const queue = withPhotos.slice();
+    const queue = allPhotos.slice();
     let done = 0;
 
     async function worker() {
       while (queue.length > 0) {
-        const item = queue.shift();
-        if (!item || !item.photo_path) continue;
-        const url = urlMap.get(item.photo_path);
+        const p = queue.shift();
+        if (!p) continue;
+        const url = urlMap.get(p.path);
         if (url) {
           try {
             const resp = await fetch(url);
             if (resp.ok) {
               const blob = await resp.blob();
-              const filename = item.photo_path.split('/').pop() || 'unknown.jpg';
+              const filename = p.path.split('/').pop() || 'unknown.jpg';
               zip.file(`photos/${filename}`, blob);
             } else {
-              console.warn('Photo fetch failed', item.photo_path, resp.status);
+              console.warn('Photo fetch failed', p.path, resp.status);
             }
           } catch (err) {
-            console.warn('Photo fetch error', item.photo_path, err);
+            console.warn('Photo fetch error', p.path, err);
           }
         }
         done++;
-        onProgress?.({ phase: 'photos', current: done, total: withPhotos.length });
+        onProgress?.({ phase: 'photos', current: done, total: allPhotos.length });
       }
     }
 

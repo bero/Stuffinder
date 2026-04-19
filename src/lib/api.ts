@@ -4,6 +4,7 @@ import type {
   Category,
   Location,
   Item,
+  ItemPhoto,
   ItemWithDetails,
   ItemFormData,
   CategoryFormData,
@@ -132,16 +133,6 @@ export async function getItem(id: string): Promise<ItemWithDetails | null> {
 }
 
 export async function createItem(householdId: string, formData: ItemFormData): Promise<Item> {
-  let photoPath: string | undefined;
-
-  if (formData.photo) {
-    const result = await uploadPhoto(formData.photo, householdId);
-    if (!result.success) {
-      throw new Error(`Photo upload failed: ${result.error}`);
-    }
-    photoPath = result.path;
-  }
-
   const { data, error } = await supabase
     .from('items')
     .insert({
@@ -150,45 +141,23 @@ export async function createItem(householdId: string, formData: ItemFormData): P
       description: formData.description || null,
       category_id: formData.category_id || null,
       location_id: formData.location_id || null,
-      photo_path: photoPath || null,
     })
     .select()
     .single();
 
-  if (error) {
-    if (photoPath) await deletePhoto(photoPath);
-    throw error;
-  }
-
+  if (error) throw error;
   return data;
 }
 
 export async function updateItem(
   id: string,
-  householdId: string,
   formData: Partial<ItemFormData>,
-  oldPhotoPath?: string | null,
 ): Promise<Item> {
-  let photoPath: string | undefined;
-
-  if (formData.photo) {
-    const result = await uploadPhoto(formData.photo, householdId);
-    if (!result.success) {
-      throw new Error(`Photo upload failed: ${result.error}`);
-    }
-    photoPath = result.path;
-
-    if (oldPhotoPath) {
-      await deletePhoto(oldPhotoPath);
-    }
-  }
-
   const updateData: Partial<Item> = {};
   if (formData.name !== undefined) updateData.name = formData.name;
   if (formData.description !== undefined) updateData.description = formData.description || null;
   if (formData.category_id !== undefined) updateData.category_id = formData.category_id || null;
   if (formData.location_id !== undefined) updateData.location_id = formData.location_id || null;
-  if (photoPath) updateData.photo_path = photoPath;
 
   const { data, error } = await supabase
     .from('items')
@@ -201,17 +170,70 @@ export async function updateItem(
   return data;
 }
 
-export async function deleteItem(id: string, photoPath?: string | null): Promise<void> {
-  if (photoPath) {
-    await deletePhoto(photoPath);
+export async function deleteItem(id: string): Promise<void> {
+  // Item's photos are cascade-deleted at the DB level. We still need to
+  // remove the files themselves from storage.
+  const photos = await getItemPhotos(id);
+  if (photos.length > 0) {
+    await Promise.all(photos.map((p) => deletePhoto(p.path)));
   }
-
-  const { error } = await supabase
-    .from('items')
-    .delete()
-    .eq('id', id);
-
+  const { error } = await supabase.from('items').delete().eq('id', id);
   if (error) throw error;
+}
+
+// ============ Item photos ============
+
+export async function getItemPhotos(itemId: string): Promise<ItemPhoto[]> {
+  const { data, error } = await supabase
+    .from('item_photos')
+    .select('*')
+    .eq('item_id', itemId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function addItemPhoto(
+  itemId: string,
+  householdId: string,
+  file: File,
+  sortOrder: number,
+): Promise<ItemPhoto> {
+  const upload = await uploadPhoto(file, householdId);
+  if (!upload.success || !upload.path) {
+    throw new Error(`Photo upload failed: ${upload.error}`);
+  }
+  const { data, error } = await supabase
+    .from('item_photos')
+    .insert({
+      item_id: itemId,
+      household_id: householdId,
+      path: upload.path,
+      sort_order: sortOrder,
+    })
+    .select()
+    .single();
+  if (error) {
+    await deletePhoto(upload.path);
+    throw error;
+  }
+  return data;
+}
+
+export async function deleteItemPhoto(photoId: string, path: string): Promise<void> {
+  const { error } = await supabase.from('item_photos').delete().eq('id', photoId);
+  if (error) throw error;
+  await deletePhoto(path);
+}
+
+export async function reorderItemPhotos(photoIds: string[]): Promise<void> {
+  // One UPDATE per row — small arrays, so not worth batching as an RPC.
+  await Promise.all(
+    photoIds.map((id, index) =>
+      supabase.from('item_photos').update({ sort_order: index }).eq('id', id),
+    ),
+  );
 }
 
 // ============ Categories ============

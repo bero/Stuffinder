@@ -35,6 +35,8 @@ interface ExportMeta {
   household_name?: string;
 }
 
+const SUPPORTED_VERSIONS = [1, 2];
+
 interface ExportCategory {
   id: string;
   name: string;
@@ -57,7 +59,9 @@ interface ExportItem {
   id: string;
   name: string;
   description: string | null;
-  photo_path: string | null;
+  // v1 exports have a single photo_path; v2+ exports have photos: string[].
+  photo_path?: string | null;
+  photos?: string[];
   category_id: string | null;
   location_id: string | null;
   created_at?: string;
@@ -91,7 +95,9 @@ export async function importHouseholdZip(
   const metaFile = zip.file('export-meta.json');
   if (!metaFile) throw new Error('Not a Stuffinder backup (export-meta.json missing)');
   const meta = JSON.parse(await metaFile.async('string')) as ExportMeta;
-  if (meta.version !== 1) throw new Error(`Unsupported backup version: ${meta.version}`);
+  if (!meta.version || !SUPPORTED_VERSIONS.includes(meta.version)) {
+    throw new Error(`Unsupported backup version: ${meta.version}`);
+  }
 
   const catFile = zip.file('categories.json');
   const locFile = zip.file('locations.json');
@@ -272,34 +278,70 @@ export async function importHouseholdZip(
     const it = items[i];
     const newCategory = it.category_id ? categoryIdMap.get(it.category_id) || null : null;
     const newLocation = it.location_id ? locationIdMap.get(it.location_id) || null : null;
-    const newPhoto = it.photo_path ? photoPathMap.get(it.photo_path) || null : null;
+
+    // Collect this item's photos as remapped storage paths. Handles both v1
+    // exports (single photo_path) and v2+ (photos array).
+    const rawPhotoRefs = it.photos && it.photos.length > 0
+      ? it.photos
+      : it.photo_path
+        ? [it.photo_path]
+        : [];
+    const remappedPhotos = rawPhotoRefs
+      .map((ref) => photoPathMap.get(ref))
+      .filter((p): p is string => !!p);
 
     const desc = (it.description || '').trim().toLowerCase();
     const matchId = mode === 'merge' && desc ? existingByDesc.get(desc) : undefined;
 
+    let itemId: string;
     if (matchId) {
       const { error } = await supabase
         .from('items')
         .update({
           category_id: newCategory,
           location_id: newLocation,
-          photo_path: newPhoto,
         })
         .eq('id', matchId);
       if (error) throw error;
+      itemId = matchId;
       itemsUpdated++;
+
+      // Merge-mode photo behaviour: replace the existing photo set with
+      // whatever the backup says (matches the user's expectation that the
+      // backup's image wins for matching descriptions).
+      if (remappedPhotos.length > 0) {
+        // Remove existing photo rows for this item; storage files stay (best-effort).
+        await supabase.from('item_photos').delete().eq('item_id', itemId);
+      }
     } else {
-      const { error } = await supabase.from('items').insert({
-        household_id: householdId,
-        name: it.name,
-        description: it.description,
-        category_id: newCategory,
-        location_id: newLocation,
-        photo_path: newPhoto,
-      });
+      const { data, error } = await supabase
+        .from('items')
+        .insert({
+          household_id: householdId,
+          name: it.name,
+          description: it.description,
+          category_id: newCategory,
+          location_id: newLocation,
+        })
+        .select('id')
+        .single();
       if (error) throw error;
+      itemId = data.id;
       itemsInserted++;
     }
+
+    // Insert photo rows in order.
+    if (remappedPhotos.length > 0) {
+      const photoRows = remappedPhotos.map((path, idx) => ({
+        item_id: itemId,
+        household_id: householdId,
+        path,
+        sort_order: idx,
+      }));
+      const { error: photoErr } = await supabase.from('item_photos').insert(photoRows);
+      if (photoErr) throw photoErr;
+    }
+
     onProgress?.({ phase: 'items', current: i + 1, total: items.length });
   }
 
