@@ -119,6 +119,62 @@ export async function searchItems(householdId: string, query: string, limit = IT
   return (data || []).filter((row: ItemWithDetails) => row.household_id === householdId);
 }
 
+export interface ItemFilters {
+  query?: string;
+  categoryId?: string;
+  /** Match items whose location is any of these ids. Caller is expected to pass
+   *  the chosen location plus its descendants so "Kitchen" finds things in
+   *  "Kitchen > Shelf" too. */
+  locationIds?: string[];
+  tagIds?: string[];
+}
+
+// Unified list/search with filters. Tag filter is AND across tagIds.
+export async function queryItems(
+  householdId: string,
+  filters: ItemFilters,
+  limit = ITEMS_PAGE_SIZE,
+): Promise<ItemWithDetails[]> {
+  const { query, categoryId, locationIds, tagIds } = filters;
+
+  // Pre-resolve items matching ALL supplied tags.
+  let tagMatchedIds: string[] | null = null;
+  if (tagIds && tagIds.length > 0) {
+    const { data, error } = await supabase
+      .from('item_tags')
+      .select('item_id, tag_id')
+      .in('tag_id', tagIds);
+    if (error) throw error;
+    const counts = new Map<string, number>();
+    for (const row of data || []) {
+      counts.set(row.item_id, (counts.get(row.item_id) || 0) + 1);
+    }
+    tagMatchedIds = Array.from(counts.entries())
+      .filter(([, n]) => n === tagIds.length)
+      .map(([id]) => id);
+    if (tagMatchedIds.length === 0) return [];
+  }
+
+  const hasQuery = query && query.trim();
+
+  let q = hasQuery
+    ? (supabase.rpc('search_items', { search_query: query!.trim() }) as any)
+    : (supabase
+        .from('items_with_details')
+        .select('*')
+        .order('updated_at', { ascending: false }) as any);
+
+  q = q.eq('household_id', householdId);
+  if (categoryId) q = q.eq('category_id', categoryId);
+  if (locationIds && locationIds.length > 0) q = q.in('location_id', locationIds);
+  if (tagMatchedIds) q = q.in('id', tagMatchedIds);
+  q = q.limit(limit);
+
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []).filter((r: ItemWithDetails) => r.household_id === householdId);
+}
+
 export async function getItem(id: string): Promise<ItemWithDetails | null> {
   const { data, error } = await supabase
     .from('items_with_details')

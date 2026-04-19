@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'preact/hooks';
 import { route } from 'preact-router';
-import { searchItems, getItems, countItems, ITEMS_PAGE_SIZE } from '../lib/api';
+import {
+  queryItems,
+  countItems,
+  getCategories,
+  getLocationsWithPath,
+  getTags,
+  ITEMS_PAGE_SIZE,
+} from '../lib/api';
 import { prefetchPhotoUrls } from '../lib/supabase';
 import { useT } from '../lib/i18n';
 import { LanguagePicker } from '../components/LanguagePicker';
-import type { ItemWithDetails } from '../types/database';
+import type { ItemWithDetails, Category, Location, Tag } from '../types/database';
 
 function SearchIcon() {
   return (
@@ -90,17 +97,48 @@ export function Home({ activeHouseholdId }: Props) {
   const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(new Map());
   const [totalCount, setTotalCount] = useState<number | null>(null);
 
-  async function loadItems() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [locations, setLocations] = useState<Array<Location & { full_path: string }>>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [categoryId, setCategoryId] = useState<string>('');
+  const [locationId, setLocationId] = useState<string>('');
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set());
+
+  const hasActiveFilter =
+    searchQuery.trim().length > 0 || !!categoryId || !!locationId || selectedTagIds.size > 0;
+
+  // Collect a location and everything under it (BFS over parent_id).
+  function locationWithDescendants(rootId: string): string[] {
+    const ids: string[] = [rootId];
+    const queue: string[] = [rootId];
+    while (queue.length > 0) {
+      const parent = queue.shift()!;
+      for (const loc of locations) {
+        if (loc.parent_id === parent) {
+          ids.push(loc.id);
+          queue.push(loc.id);
+        }
+      }
+    }
+    return ids;
+  }
+
+  async function runQuery(silentSpinner = false) {
     if (!activeHouseholdId) return;
     try {
-      setLoading(true);
+      if (!silentSpinner) setLoading(true);
       setError(null);
       const [data, total] = await Promise.all([
-        getItems(activeHouseholdId),
-        countItems(activeHouseholdId),
+        queryItems(activeHouseholdId, {
+          query: searchQuery,
+          categoryId: categoryId || undefined,
+          locationIds: locationId ? locationWithDescendants(locationId) : undefined,
+          tagIds: selectedTagIds.size > 0 ? Array.from(selectedTagIds) : undefined,
+        }),
+        hasActiveFilter ? Promise.resolve(null as number | null) : countItems(activeHouseholdId),
       ]);
       setItems(data);
-      setTotalCount(total);
+      if (total !== null) setTotalCount(total);
     } catch (err) {
       setError(t('home.failedLoad'));
       console.error(err);
@@ -109,27 +147,38 @@ export function Home({ activeHouseholdId }: Props) {
     }
   }
 
-  useEffect(() => {
-    loadItems();
-  }, [activeHouseholdId]);
-
+  // Load filter lookup data once per active household.
   useEffect(() => {
     if (!activeHouseholdId) return;
-    const timer = setTimeout(async () => {
-      if (searchQuery.trim()) {
-        try {
-          const results = await searchItems(activeHouseholdId, searchQuery);
-          setItems(results);
-        } catch (err) {
-          console.error('Search error:', err);
-        }
-      } else {
-        loadItems();
+    (async () => {
+      try {
+        const [cats, locs, tagList] = await Promise.all([
+          getCategories(activeHouseholdId),
+          getLocationsWithPath(activeHouseholdId),
+          getTags(activeHouseholdId),
+        ]);
+        setCategories(cats);
+        setLocations(locs);
+        setTags(tagList);
+      } catch (err) {
+        console.error('Failed to load filter options:', err);
       }
-    }, 300);
+    })();
+  }, [activeHouseholdId]);
 
+  // Initial load when household changes.
+  useEffect(() => {
+    runQuery();
+  }, [activeHouseholdId]);
+
+  // Run the query whenever search text or filters change. Debounced so typing
+  // isn't overly chatty; chip taps still feel instant because the debounce
+  // just defers the request by 300 ms, it doesn't block the UI.
+  useEffect(() => {
+    if (!activeHouseholdId) return;
+    const timer = setTimeout(() => { runQuery(true); }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery, activeHouseholdId]);
+  }, [searchQuery, categoryId, locationId, selectedTagIds, activeHouseholdId]);
 
   // Batch-sign photo URLs whenever the visible items change.
   useEffect(() => {
@@ -138,15 +187,31 @@ export function Home({ activeHouseholdId }: Props) {
       setPhotoUrls(new Map());
       return;
     }
-    const paths = items.map(i => i.photo_path).filter((p): p is string => !!p);
+    const paths = items.map((i) => i.photo_path).filter((p): p is string => !!p);
     prefetchPhotoUrls(paths).then((map) => {
       if (!cancelled) setPhotoUrls(map);
     });
     return () => { cancelled = true; };
   }, [items]);
 
+  function toggleTag(tagId: string) {
+    setSelectedTagIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(tagId)) next.delete(tagId);
+      else next.add(tagId);
+      return next;
+    });
+  }
+
+  function clearAllFilters() {
+    setSearchQuery('');
+    setCategoryId('');
+    setLocationId('');
+    setSelectedTagIds(new Set());
+  }
+
   const isTruncated =
-    !searchQuery.trim() &&
+    !hasActiveFilter &&
     totalCount !== null &&
     totalCount > ITEMS_PAGE_SIZE &&
     items.length >= ITEMS_PAGE_SIZE;
@@ -159,7 +224,7 @@ export function Home({ activeHouseholdId }: Props) {
         <p class="text-slate-400">{t('home.tagline')}</p>
       </header>
 
-      <div class="relative mb-6">
+      <div class="relative mb-3">
         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           <SearchIcon />
         </div>
@@ -172,10 +237,70 @@ export function Home({ activeHouseholdId }: Props) {
         />
       </div>
 
+      {/* Filters */}
+      <div class="mb-4 space-y-2">
+        <div class="flex gap-2">
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId((e.target as HTMLSelectElement).value)}
+            class="select flex-1 text-sm py-2"
+          >
+            <option value="">{t('home.allCategories')}</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.icon} {cat.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={locationId}
+            onChange={(e) => setLocationId((e.target as HTMLSelectElement).value)}
+            class="select flex-1 text-sm py-2"
+          >
+            <option value="">{t('home.allLocations')}</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.icon} {loc.full_path}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {tags.length > 0 && (
+          <div class="flex flex-wrap gap-1.5">
+            {tags.map((tag) => {
+              const selected = selectedTagIds.has(tag.id);
+              return (
+                <button
+                  key={tag.id}
+                  onClick={() => toggleTag(tag.id)}
+                  class={`rounded-full px-2.5 py-0.5 text-xs border transition-colors ${
+                    selected
+                      ? 'bg-primary-700 border-primary-500 text-white'
+                      : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                  }`}
+                >
+                  {tag.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {hasActiveFilter && (
+          <button
+            onClick={clearAllFilters}
+            class="text-xs text-slate-400 hover:text-slate-200 underline"
+          >
+            {t('home.clearFilters')}
+          </button>
+        )}
+      </div>
+
       {error && (
         <div class="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg mb-4">
           {error}
-          <button onClick={loadItems} class="ml-2 underline">{t('common.retry')}</button>
+          <button onClick={() => runQuery()} class="ml-2 underline">{t('common.retry')}</button>
         </div>
       )}
 
@@ -184,7 +309,7 @@ export function Home({ activeHouseholdId }: Props) {
           <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent"></div>
         </div>
       ) : items.length === 0 ? (
-        <EmptyState hasSearch={searchQuery.trim().length > 0} />
+        <EmptyState hasSearch={hasActiveFilter} />
       ) : (
         <>
           <div class="space-y-3">
