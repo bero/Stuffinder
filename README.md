@@ -2,6 +2,42 @@
 
 A PWA to catalog and find your belongings. Take a photo, tag it with a location and category, share the inventory with your household.
 
+## The idea
+
+You know the drill — the power drill is *somewhere*. Probably the garage. Maybe the basement. Could be in that box you haven't opened since you moved. You spend 20 minutes tearing the house apart, find it, and five months later repeat the exact same search.
+
+Stuffinder replaces "where did I put it?" with a two-second query on your phone. Snap a photo when you put something away, tag its location, and when you need it later just search. Everyone in your household shares the same inventory, so when your partner moves the drill from the garage to the attic, the app moves with it.
+
+**Who it's for**: households, hobby workshops, offices, collectors — anyone who has more stuff than they can reliably keep track of.
+
+**Core idea in 5 concepts**:
+
+- **Item** — a single thing (one drill, one document folder, one jar of screws). Has a name, optional description, a photo or two, and references to location, category, tags.
+- **Location** — where it lives, hierarchically: "Garage" → "Workbench" → "Top drawer".
+- **Category** — what kind of thing it is (Tools, Electronics, Documents, …). Each household has its own list.
+- **Tag** — cross-cutting labels (battery-powered, fragile, seasonal). An item can have any number of tags.
+- **Household** — the shared scope everything lives in. Invite family or roommates with an 8-character code; everyone sees and edits the same inventory.
+
+## Quickstart — using Stuffinder
+
+1. **Open the app** in a browser (or install it as a PWA from the browser menu).
+2. **Create an account** with email and password.
+3. **Pick "Create a household"**, give it a name (e.g. "Home"). You're now the owner; a starter set of categories and locations is seeded for you.
+4. **Add your first item**: tap the **+** button in the bottom nav →
+   - Tap the photo area → phone camera opens (point at the thing, snap).
+   - Give it a name.
+   - Optionally pick a Location, a Category, any Tags. Or create new ones right there with the **+** buttons next to each dropdown.
+   - Save.
+5. **Find it later**: tap Home → type in the search box, or use the filter chips (category, location, tag). Partial matches are fine ("dri" finds the drill).
+6. **Share with your household** (optional): Settings → Household tab → **New invite** → give the 8-character code to your partner / roommate. They sign up, pick *Join with an invite code*, paste the code. Done.
+
+**Tips**:
+
+- **Multiple photos per item**: add as many as you want. The first one is the cover shown on the Home list. Swipe on the item detail page to see the rest.
+- **Location trees**: picking a parent location filters items in any child — e.g. filtering by "Garage" includes things in "Garage > Shelf 1".
+- **Export**: Settings → Household → *Export full backup* downloads a ZIP with CSV + JSON + all your photos. Safe to keep as a standalone archive.
+- **Install as PWA**: Safari (iOS) → Share → Add to Home Screen. Chrome (Android) → ⋮ → Install app. App gets its own icon and runs fullscreen.
+
 ## Tech Stack
 
 - **Frontend**: TypeScript + Vite + Preact + Tailwind CSS
@@ -10,13 +46,22 @@ A PWA to catalog and find your belongings. Take a photo, tag it with a location 
 
 ## Features
 
-- Photo capture straight from device camera
-- Hierarchical locations ("Garage" > "Shelf 1")
-- Per-household categories (customizable)
-- Full-text search across name, description, category, location
+- Photo capture straight from device camera, with multi-photo galleries per item
+- Hierarchical locations ("Garage" > "Shelf 1") with descendant-aware filtering
+- Per-household categories and tags, customizable in Settings
+- Search across name, description, category, location, and tag names
+- Filter chips (category / location / tag) and four sort options with direction toggle
 - Multi-user households — invite others with a code
 - Per-household private photo storage (signed URLs, 1h TTL)
+- Full ZIP export / import with CSV + JSON + photos
+- Eight UI languages (English, Swedish, Finnish, German, French, Italian, Spanish, Portuguese)
 - Installable as a PWA on iOS and Android
+
+---
+
+# Self-hosting & development
+
+The sections below are for running your own copy of Stuffinder on your own Supabase project and Vercel account. If you're just using someone else's deployment, you can stop reading here.
 
 ## Prerequisites
 

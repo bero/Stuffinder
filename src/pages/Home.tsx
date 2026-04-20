@@ -13,6 +13,7 @@ import {
 import { prefetchPhotoUrls } from '../lib/supabase';
 import { useT } from '../lib/i18n';
 import { LanguagePicker } from '../components/LanguagePicker';
+import { IntroModal } from '../components/IntroModal';
 import type { ItemWithDetails, Category, Location, Tag } from '../types/database';
 
 function SearchIcon() {
@@ -107,6 +108,7 @@ export function Home({ activeHouseholdId }: Props) {
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortBy>('recent');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [showIntro, setShowIntro] = useState(false);
 
   // When the sort key changes, reset to its natural direction.
   function handleSortByChange(next: SortBy) {
@@ -232,7 +234,18 @@ export function Home({ activeHouseholdId }: Props) {
     <div class="px-4 pt-6">
       <LanguagePicker />
       <header class="mb-6">
-        <h1 class="text-2xl font-bold text-slate-100">{t('home.title')}</h1>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-bold text-slate-100">{t('home.title')}</h1>
+          <button
+            type="button"
+            onClick={() => setShowIntro(true)}
+            class="text-2xl leading-none hover:scale-110 active:scale-95 transition-transform"
+            aria-label={t('intro.button')}
+            title={t('intro.button')}
+          >
+            ℹ️
+          </button>
+        </div>
         <p class="text-slate-400">{t('home.tagline')}</p>
       </header>
 
@@ -372,6 +385,8 @@ export function Home({ activeHouseholdId }: Props) {
           )}
         </>
       )}
+
+      {showIntro && <IntroModal onClose={() => setShowIntro(false)} />}
     </div>
   );
 }
