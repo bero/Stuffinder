@@ -90,7 +90,7 @@ const en: Dict = {
 
   'addItem.title': 'Add Item',
   'addItem.photo': 'Photo',
-  'addItem.tapToTakePhoto': 'Tap to take photo',
+  'addItem.addExistingPhoto': 'Add existing photo',
   'addItem.name': 'Name *',
   'addItem.namePlaceholder': 'What is this item?',
   'addItem.location': 'Location',
@@ -209,6 +209,12 @@ const en: Dict = {
   'settings.failedUpdateTag': 'Failed to update tag',
 
   'addItem.tags': 'Tags',
+  'addItem.useCamera': 'Use camera',
+
+  'webcam.capture': 'Capture',
+  'webcam.retake': 'Retake',
+  'webcam.use': 'Use this photo',
+  'webcam.error': 'Could not access camera',
 
   'tags.searchOrCreate': 'Type to search or create a tag',
   'tags.create': 'Create "{name}"',
@@ -313,7 +319,7 @@ const sv: Dict = {
 
   'addItem.title': 'Lägg till föremål',
   'addItem.photo': 'Foto',
-  'addItem.tapToTakePhoto': 'Tryck för att ta foto',
+  'addItem.addExistingPhoto': 'Lägg till befintligt foto',
   'addItem.name': 'Namn *',
   'addItem.namePlaceholder': 'Vad är detta föremål?',
   'addItem.location': 'Plats',
@@ -432,6 +438,12 @@ const sv: Dict = {
   'settings.failedUpdateTag': 'Kunde inte uppdatera tagg',
 
   'addItem.tags': 'Taggar',
+  'addItem.useCamera': 'Använd kamera',
+
+  'webcam.capture': 'Ta foto',
+  'webcam.retake': 'Ta om',
+  'webcam.use': 'Använd detta foto',
+  'webcam.error': 'Kunde inte nå kameran',
 
   'tags.searchOrCreate': 'Sök eller skapa en tagg',
   'tags.create': 'Skapa "{name}"',
@@ -536,7 +548,7 @@ const fi: Dict = {
 
   'addItem.title': 'Lisää esine',
   'addItem.photo': 'Valokuva',
-  'addItem.tapToTakePhoto': 'Napauta ottaaksesi kuvan',
+  'addItem.addExistingPhoto': 'Lisää olemassa oleva kuva',
   'addItem.name': 'Nimi *',
   'addItem.namePlaceholder': 'Mikä tämä esine on?',
   'addItem.location': 'Sijainti',
@@ -655,6 +667,12 @@ const fi: Dict = {
   'settings.failedUpdateTag': 'Tagin päivitys epäonnistui',
 
   'addItem.tags': 'Tagit',
+  'addItem.useCamera': 'Käytä kameraa',
+
+  'webcam.capture': 'Ota kuva',
+  'webcam.retake': 'Ota uudelleen',
+  'webcam.use': 'Käytä tätä kuvaa',
+  'webcam.error': 'Kameraan ei saada yhteyttä',
 
   'tags.searchOrCreate': 'Etsi tai luo tagi',
   'tags.create': 'Luo "{name}"',
@@ -759,7 +777,7 @@ const de: Dict = {
 
   'addItem.title': 'Objekt hinzufügen',
   'addItem.photo': 'Foto',
-  'addItem.tapToTakePhoto': 'Tippen zum Fotografieren',
+  'addItem.addExistingPhoto': 'Vorhandenes Foto hinzufügen',
   'addItem.name': 'Name *',
   'addItem.namePlaceholder': 'Was ist das für ein Objekt?',
   'addItem.location': 'Ort',
@@ -878,6 +896,12 @@ const de: Dict = {
   'settings.failedUpdateTag': 'Tag konnte nicht aktualisiert werden',
 
   'addItem.tags': 'Tags',
+  'addItem.useCamera': 'Kamera verwenden',
+
+  'webcam.capture': 'Aufnehmen',
+  'webcam.retake': 'Neu aufnehmen',
+  'webcam.use': 'Dieses Foto verwenden',
+  'webcam.error': 'Kamera nicht verfügbar',
 
   'tags.searchOrCreate': 'Tag suchen oder anlegen',
   'tags.create': '"{name}" anlegen',
@@ -982,7 +1006,7 @@ const fr: Dict = {
 
   'addItem.title': 'Ajouter un objet',
   'addItem.photo': 'Photo',
-  'addItem.tapToTakePhoto': 'Appuyez pour prendre une photo',
+  'addItem.addExistingPhoto': 'Ajouter une photo existante',
   'addItem.name': 'Nom *',
   'addItem.namePlaceholder': 'Quel est cet objet ?',
   'addItem.location': 'Emplacement',
@@ -1101,6 +1125,12 @@ const fr: Dict = {
   'settings.failedUpdateTag': 'Échec de la mise à jour de l\'étiquette',
 
   'addItem.tags': 'Étiquettes',
+  'addItem.useCamera': 'Utiliser la caméra',
+
+  'webcam.capture': 'Capturer',
+  'webcam.retake': 'Reprendre',
+  'webcam.use': 'Utiliser cette photo',
+  'webcam.error': 'Impossible d\'accéder à la caméra',
 
   'tags.searchOrCreate': 'Rechercher ou créer une étiquette',
   'tags.create': 'Créer « {name} »',
@@ -1205,7 +1235,7 @@ const it: Dict = {
 
   'addItem.title': 'Aggiungi oggetto',
   'addItem.photo': 'Foto',
-  'addItem.tapToTakePhoto': 'Tocca per scattare',
+  'addItem.addExistingPhoto': 'Aggiungi foto esistente',
   'addItem.name': 'Nome *',
   'addItem.namePlaceholder': 'Cos\'è questo oggetto?',
   'addItem.location': 'Posizione',
@@ -1324,6 +1354,12 @@ const it: Dict = {
   'settings.failedUpdateTag': 'Impossibile aggiornare il tag',
 
   'addItem.tags': 'Tag',
+  'addItem.useCamera': 'Usa fotocamera',
+
+  'webcam.capture': 'Scatta',
+  'webcam.retake': 'Rifai',
+  'webcam.use': 'Usa questa foto',
+  'webcam.error': 'Impossibile accedere alla fotocamera',
 
   'tags.searchOrCreate': 'Cerca o crea un tag',
   'tags.create': 'Crea "{name}"',
@@ -1428,7 +1464,7 @@ const es: Dict = {
 
   'addItem.title': 'Añadir objeto',
   'addItem.photo': 'Foto',
-  'addItem.tapToTakePhoto': 'Toca para hacer una foto',
+  'addItem.addExistingPhoto': 'Añadir foto existente',
   'addItem.name': 'Nombre *',
   'addItem.namePlaceholder': '¿Qué es este objeto?',
   'addItem.location': 'Ubicación',
@@ -1547,6 +1583,12 @@ const es: Dict = {
   'settings.failedUpdateTag': 'Error al actualizar la etiqueta',
 
   'addItem.tags': 'Etiquetas',
+  'addItem.useCamera': 'Usar cámara',
+
+  'webcam.capture': 'Capturar',
+  'webcam.retake': 'Repetir',
+  'webcam.use': 'Usar esta foto',
+  'webcam.error': 'No se pudo acceder a la cámara',
 
   'tags.searchOrCreate': 'Buscar o crear una etiqueta',
   'tags.create': 'Crear "{name}"',
@@ -1651,7 +1693,7 @@ const pt: Dict = {
 
   'addItem.title': 'Adicionar item',
   'addItem.photo': 'Foto',
-  'addItem.tapToTakePhoto': 'Toca para tirar foto',
+  'addItem.addExistingPhoto': 'Adicionar foto existente',
   'addItem.name': 'Nome *',
   'addItem.namePlaceholder': 'O que é este item?',
   'addItem.location': 'Localização',
@@ -1770,6 +1812,12 @@ const pt: Dict = {
   'settings.failedUpdateTag': 'Falha ao atualizar etiqueta',
 
   'addItem.tags': 'Etiquetas',
+  'addItem.useCamera': 'Usar câmara',
+
+  'webcam.capture': 'Capturar',
+  'webcam.retake': 'Repetir',
+  'webcam.use': 'Usar esta foto',
+  'webcam.error': 'Não foi possível aceder à câmara',
 
   'tags.searchOrCreate': 'Procurar ou criar uma etiqueta',
   'tags.create': 'Criar "{name}"',

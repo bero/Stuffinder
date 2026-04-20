@@ -4,7 +4,12 @@ import { createItem, addItemPhoto, deleteItem, getCategories, getLocationsWithPa
 import { useT } from '../lib/i18n';
 import { QuickCreateCategory, QuickCreateLocation } from '../components/QuickCreate';
 import { TagPicker } from '../components/TagPicker';
+import { WebcamCapture } from '../components/WebcamCapture';
 import type { Category, Location, Tag, TagRef } from '../types/database';
+
+const hasWebcam = typeof navigator !== 'undefined'
+  && typeof navigator.mediaDevices !== 'undefined'
+  && typeof navigator.mediaDevices.getUserMedia === 'function';
 
 function CameraIcon() {
   return (
@@ -50,6 +55,7 @@ export function AddItem({ activeHouseholdId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [showNewLocation, setShowNewLocation] = useState(false);
+  const [showWebcam, setShowWebcam] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,6 +102,11 @@ export function AddItem({ activeHouseholdId }: Props) {
 
   function openPicker() {
     fileInputRef.current?.click();
+  }
+
+  function handleWebcamCapture(file: File) {
+    setPhotos((prev) => [...prev, { file, preview: URL.createObjectURL(file) }]);
+    setShowWebcam(false);
   }
 
   async function handleSubmit(e: Event) {
@@ -164,21 +175,31 @@ export function AddItem({ activeHouseholdId }: Props) {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             multiple
             onChange={handlePhotoChange}
             class="hidden"
           />
 
           {photos.length === 0 ? (
-            <button
-              type="button"
-              onClick={openPicker}
-              class="w-full h-48 border-2 border-dashed border-slate-600 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-slate-500 hover:bg-slate-800/50 transition-colors"
-            >
-              <CameraIcon />
-              <span class="text-slate-400">{t('addItem.tapToTakePhoto')}</span>
-            </button>
+            <div class="space-y-2">
+              <button
+                type="button"
+                onClick={openPicker}
+                class="w-full h-48 border-2 border-dashed border-slate-600 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-slate-500 hover:bg-slate-800/50 transition-colors"
+              >
+                <CameraIcon />
+                <span class="text-slate-400">{t('addItem.addExistingPhoto')}</span>
+              </button>
+              {hasWebcam && (
+                <button
+                  type="button"
+                  onClick={() => setShowWebcam(true)}
+                  class="btn-secondary w-full py-2 text-sm"
+                >
+                  🎥 {t('addItem.useCamera')}
+                </button>
+              )}
+            </div>
           ) : (
             <div class="grid grid-cols-3 gap-2">
               {photos.map((p, i) => (
@@ -198,10 +219,21 @@ export function AddItem({ activeHouseholdId }: Props) {
                 type="button"
                 onClick={openPicker}
                 class="aspect-square border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center text-slate-400 hover:border-slate-500 hover:bg-slate-800/50 transition-colors"
-                aria-label={t('addItem.tapToTakePhoto')}
+                aria-label={t('addItem.addExistingPhoto')}
               >
                 <CameraIcon />
               </button>
+              {hasWebcam && (
+                <button
+                  type="button"
+                  onClick={() => setShowWebcam(true)}
+                  class="aspect-square border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center text-2xl hover:border-slate-500 hover:bg-slate-800/50 transition-colors"
+                  aria-label={t('addItem.useCamera')}
+                  title={t('addItem.useCamera')}
+                >
+                  🎥
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -351,6 +383,12 @@ export function AddItem({ activeHouseholdId }: Props) {
             setShowNewLocation(false);
           }}
           onClose={() => setShowNewLocation(false)}
+        />
+      )}
+      {showWebcam && (
+        <WebcamCapture
+          onCapture={handleWebcamCapture}
+          onCancel={() => setShowWebcam(false)}
         />
       )}
     </div>
