@@ -7,6 +7,8 @@ import {
   getLocationsWithPath,
   getTags,
   ITEMS_PAGE_SIZE,
+  type SortBy,
+  type SortDir,
 } from '../lib/api';
 import { prefetchPhotoUrls } from '../lib/supabase';
 import { useT } from '../lib/i18n';
@@ -103,6 +105,14 @@ export function Home({ activeHouseholdId }: Props) {
   const [categoryId, setCategoryId] = useState<string>('');
   const [locationId, setLocationId] = useState<string>('');
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<SortBy>('recent');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  // When the sort key changes, reset to its natural direction.
+  function handleSortByChange(next: SortBy) {
+    setSortBy(next);
+    setSortDir(next === 'recent' ? 'desc' : 'asc');
+  }
 
   const hasActiveFilter =
     searchQuery.trim().length > 0 || !!categoryId || !!locationId || selectedTagIds.size > 0;
@@ -134,6 +144,8 @@ export function Home({ activeHouseholdId }: Props) {
           categoryId: categoryId || undefined,
           locationIds: locationId ? locationWithDescendants(locationId) : undefined,
           tagIds: selectedTagIds.size > 0 ? Array.from(selectedTagIds) : undefined,
+          sortBy,
+          sortDir,
         }),
         hasActiveFilter ? Promise.resolve(null as number | null) : countItems(activeHouseholdId),
       ]);
@@ -178,7 +190,7 @@ export function Home({ activeHouseholdId }: Props) {
     if (!activeHouseholdId) return;
     const timer = setTimeout(() => { runQuery(true); }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery, categoryId, locationId, selectedTagIds, activeHouseholdId]);
+  }, [searchQuery, categoryId, locationId, selectedTagIds, sortBy, sortDir, activeHouseholdId]);
 
   // Batch-sign photo URLs whenever the visible items change.
   useEffect(() => {
@@ -287,14 +299,46 @@ export function Home({ activeHouseholdId }: Props) {
           </div>
         )}
 
-        {hasActiveFilter && (
-          <button
-            onClick={clearAllFilters}
-            class="text-xs text-slate-400 hover:text-slate-200 underline"
-          >
-            {t('home.clearFilters')}
-          </button>
-        )}
+        <div class="flex items-center justify-between gap-3 text-sm">
+          <div class="flex items-center gap-2">
+            <label for="sort-by" class="text-slate-400">{t('home.sortBy')}:</label>
+            <select
+              id="sort-by"
+              value={sortBy}
+              onChange={(e) => handleSortByChange((e.target as HTMLSelectElement).value as SortBy)}
+              class="select py-1 text-sm w-auto"
+            >
+              <option value="recent">{t('home.sort.recent')}</option>
+              <option value="name">{t('home.sort.name')}</option>
+              <option value="category">{t('home.sort.category')}</option>
+              <option value="location">{t('home.sort.location')}</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+              class="p-1 text-slate-300 hover:text-slate-100"
+              aria-label={sortDir === 'asc' ? t('home.sort.descending') : t('home.sort.ascending')}
+              title={sortDir === 'asc' ? t('home.sort.ascending') : t('home.sort.descending')}
+            >
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                {sortDir === 'asc' ? (
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9M3 12h5m13 4-4 4m0 0-4-4m4 4V8" />
+                ) : (
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9M3 12h5m13 4-4-4m0 0-4 4m4-4v12" />
+                )}
+              </svg>
+            </button>
+          </div>
+
+          {hasActiveFilter && (
+            <button
+              onClick={clearAllFilters}
+              class="text-slate-400 hover:text-slate-200 underline"
+            >
+              {t('home.clearFilters')}
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (

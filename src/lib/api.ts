@@ -119,6 +119,9 @@ export async function searchItems(householdId: string, query: string, limit = IT
   return (data || []).filter((row: ItemWithDetails) => row.household_id === householdId);
 }
 
+export type SortBy = 'recent' | 'name' | 'category' | 'location';
+export type SortDir = 'asc' | 'desc';
+
 export interface ItemFilters {
   query?: string;
   categoryId?: string;
@@ -127,6 +130,9 @@ export interface ItemFilters {
    *  "Kitchen > Shelf" too. */
   locationIds?: string[];
   tagIds?: string[];
+  sortBy?: SortBy;
+  /** Overrides the natural direction for sortBy (desc for "recent", asc for everything else). */
+  sortDir?: SortDir;
 }
 
 // Unified list/search with filters. Tag filter is AND across tagIds.
@@ -135,7 +141,7 @@ export async function queryItems(
   filters: ItemFilters,
   limit = ITEMS_PAGE_SIZE,
 ): Promise<ItemWithDetails[]> {
-  const { query, categoryId, locationIds, tagIds } = filters;
+  const { query, categoryId, locationIds, tagIds, sortBy = 'recent', sortDir } = filters;
 
   // Pre-resolve items matching ALL supplied tags.
   let tagMatchedIds: string[] | null = null;
@@ -159,15 +165,29 @@ export async function queryItems(
 
   let q = hasQuery
     ? (supabase.rpc('search_items', { search_query: query!.trim() }) as any)
-    : (supabase
-        .from('items_with_details')
-        .select('*')
-        .order('updated_at', { ascending: false }) as any);
+    : (supabase.from('items_with_details').select('*') as any);
 
   q = q.eq('household_id', householdId);
   if (categoryId) q = q.eq('category_id', categoryId);
   if (locationIds && locationIds.length > 0) q = q.in('location_id', locationIds);
   if (tagMatchedIds) q = q.in('id', tagMatchedIds);
+
+  // Apply sort. For the RPC path, .order() appends to the outer select that
+  // wraps the SETOF, so this stacks on top of the RPC's internal ORDER BY.
+  // Explicit nullsLast keeps "no category" items at the bottom for category sort.
+  const asc = sortDir ? sortDir === 'asc' : sortBy !== 'recent';
+  if (sortBy === 'name') {
+    q = q.order('name', { ascending: asc });
+  } else if (sortBy === 'category') {
+    q = q.order('category_name', { ascending: asc, nullsFirst: false });
+    q = q.order('name', { ascending: asc });
+  } else if (sortBy === 'location') {
+    q = q.order('location_full_path', { ascending: asc, nullsFirst: false });
+    q = q.order('name', { ascending: asc });
+  } else {
+    q = q.order('updated_at', { ascending: asc });
+  }
+
   q = q.limit(limit);
 
   const { data, error } = await q;
