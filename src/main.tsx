@@ -1,6 +1,8 @@
 import { render } from 'preact';
 import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill';
 import { App } from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { DevCrashTrigger } from './components/DevCrashTrigger';
 import { t } from './lib/i18n';
 import './index.css';
 
@@ -44,4 +46,10 @@ document.addEventListener(
   true,
 );
 
-render(<App />, document.getElementById('app')!);
+render(
+  <ErrorBoundary>
+    {import.meta.env.DEV && <DevCrashTrigger />}
+    <App />
+  </ErrorBoundary>,
+  document.getElementById('app')!,
+);
