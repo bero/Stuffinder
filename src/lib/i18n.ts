@@ -16,6 +16,8 @@ export const LOCALES: Array<{ code: Locale; flag: string; name: string }> = [
 type Dict = Record<string, string>;
 
 const en: Dict = {
+  'common.requiredField': 'Please fill in this field.',
+  'common.invalidEmail': 'Please enter a valid email address.',
   'common.cancel': 'Cancel',
   'common.save': 'Save',
   'common.saving': 'Saving…',
@@ -211,6 +213,8 @@ const en: Dict = {
 };
 
 const sv: Dict = {
+  'common.requiredField': 'Fyll i det här fältet.',
+  'common.invalidEmail': 'Ange en giltig e-postadress.',
   'common.cancel': 'Avbryt',
   'common.save': 'Spara',
   'common.saving': 'Sparar…',
@@ -406,6 +410,8 @@ const sv: Dict = {
 };
 
 const fi: Dict = {
+  'common.requiredField': 'Täytä tämä kenttä.',
+  'common.invalidEmail': 'Anna kelvollinen sähköpostiosoite.',
   'common.cancel': 'Peruuta',
   'common.save': 'Tallenna',
   'common.saving': 'Tallennetaan…',
@@ -601,6 +607,8 @@ const fi: Dict = {
 };
 
 const de: Dict = {
+  'common.requiredField': 'Bitte fülle dieses Feld aus.',
+  'common.invalidEmail': 'Bitte gib eine gültige E-Mail-Adresse ein.',
   'common.cancel': 'Abbrechen',
   'common.save': 'Speichern',
   'common.saving': 'Speichern…',
@@ -796,6 +804,8 @@ const de: Dict = {
 };
 
 const fr: Dict = {
+  'common.requiredField': 'Veuillez remplir ce champ.',
+  'common.invalidEmail': 'Veuillez saisir une adresse e-mail valide.',
   'common.cancel': 'Annuler',
   'common.save': 'Enregistrer',
   'common.saving': 'Enregistrement…',
@@ -991,6 +1001,8 @@ const fr: Dict = {
 };
 
 const it: Dict = {
+  'common.requiredField': 'Compila questo campo.',
+  'common.invalidEmail': 'Inserisci un indirizzo email valido.',
   'common.cancel': 'Annulla',
   'common.save': 'Salva',
   'common.saving': 'Salvataggio…',
@@ -1186,6 +1198,8 @@ const it: Dict = {
 };
 
 const es: Dict = {
+  'common.requiredField': 'Rellena este campo.',
+  'common.invalidEmail': 'Introduce una dirección de correo válida.',
   'common.cancel': 'Cancelar',
   'common.save': 'Guardar',
   'common.saving': 'Guardando…',
@@ -1381,6 +1395,8 @@ const es: Dict = {
 };
 
 const pt: Dict = {
+  'common.requiredField': 'Preenche este campo.',
+  'common.invalidEmail': 'Introduz um endereço de e-mail válido.',
   'common.cancel': 'Cancelar',
   'common.save': 'Guardar',
   'common.saving': 'A guardar…',
