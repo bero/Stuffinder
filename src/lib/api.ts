@@ -505,9 +505,17 @@ export async function createLocation(householdId: string, formData: LocationForm
 }
 
 export async function updateLocation(id: string, formData: Partial<LocationFormData>): Promise<Location> {
+  // Build the update payload explicitly so that clearing parent_id actually
+  // writes NULL. supabase-js drops undefined values, so a naive spread would
+  // leave the existing parent_id untouched when the caller meant "no parent".
+  const updateData: Record<string, unknown> = {};
+  if (formData.name !== undefined) updateData.name = formData.name;
+  if (formData.icon !== undefined) updateData.icon = formData.icon;
+  if ('parent_id' in formData) updateData.parent_id = formData.parent_id || null;
+
   const { data, error } = await supabase
     .from('locations')
-    .update(formData)
+    .update(updateData)
     .eq('id', id)
     .select()
     .single();
