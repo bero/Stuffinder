@@ -6,6 +6,8 @@ import { ItemDetail } from './pages/ItemDetail';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
 import { AuthCallback } from './pages/AuthCallback';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { Onboarding } from './pages/Onboarding';
 import { NavBar } from './components/NavBar';
 import { UpdatePrompt } from './components/UpdatePrompt';
@@ -29,12 +31,20 @@ export function App() {
       <>
         <Router>
           <Route path="/auth/callback" component={AuthCallback} />
+          <Route path="/auth/reset" component={ResetPassword} />
+          <Route path="/forgot-password" component={ForgotPassword} />
           <Route path="/signup" component={Signup} />
           <Route default component={Login} />
         </Router>
         <UpdatePrompt />
       </>
     );
+  }
+
+  // /auth/reset needs to stay mounted across the auth-state transition that
+  // happens when exchangeCodeForSession succeeds mid-flow.
+  if (typeof window !== 'undefined' && window.location.pathname === '/auth/reset') {
+    return <ResetPassword />;
   }
 
   return <AuthedApp session={session} />;

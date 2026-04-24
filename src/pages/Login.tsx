@@ -82,6 +82,10 @@ export function Login() {
         </form>
 
         <p class="text-center text-slate-400 text-sm">
+          <a href="/forgot-password" class="text-primary-400 hover:text-primary-300">{t('auth.login.forgotPassword')}</a>
+        </p>
+
+        <p class="text-center text-slate-400 text-sm">
           {t('auth.noAccount')}{' '}
           <a href="/signup" class="text-primary-400 hover:text-primary-300">{t('auth.createOne')}</a>
         </p>
