@@ -2112,6 +2112,10 @@ let listeners: Array<() => void> = [];
 function readLocale(): Locale {
   const stored = (typeof localStorage !== 'undefined' ? localStorage.getItem(LOCALE_KEY) : null) as Locale | null;
   if (stored && translations[stored]) return stored;
+
+  const browser = (typeof navigator !== 'undefined' ? navigator.language : '').toLowerCase().slice(0, 2) as Locale;
+  if (browser && translations[browser]) return browser;
+
   return 'en';
 }
 
