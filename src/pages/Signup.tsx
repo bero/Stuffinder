@@ -1,8 +1,9 @@
 import { useState } from 'preact/hooks';
 import { route } from 'preact-router';
-import { signUp, signIn } from '../lib/auth';
+import { signUp, resendConfirmation } from '../lib/auth';
 import { useT } from '../lib/i18n';
 import { LanguagePicker } from '../components/LanguagePicker';
+import { IntroButton } from '../components/IntroButton';
 
 export function Signup() {
   const t = useT();
@@ -11,6 +12,8 @@ export function Signup() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [resending, setResending] = useState(false);
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -23,12 +26,13 @@ export function Signup() {
       setSubmitting(true);
       setError(null);
       setMessage(null);
-      await signUp(email, password);
-      try {
-        await signIn(email, password);
+      setAwaitingConfirmation(false);
+      const data = await signUp(email, password);
+      if (data.session) {
         route('/', true);
-      } catch {
+      } else {
         setMessage(t('auth.signup.checkEmail'));
+        setAwaitingConfirmation(true);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('auth.signup.failed'));
@@ -37,12 +41,29 @@ export function Signup() {
     }
   }
 
+  async function handleResend() {
+    if (!email || resending) return;
+    try {
+      setResending(true);
+      setError(null);
+      await resendConfirmation(email);
+      setMessage(t('auth.signup.resendSent'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('auth.signup.failed'));
+    } finally {
+      setResending(false);
+    }
+  }
+
   return (
     <div class="min-h-screen flex items-center justify-center p-6">
       <LanguagePicker />
       <div class="w-full max-w-sm space-y-6">
         <header class="text-center">
-          <h1 class="text-3xl font-bold text-slate-100">{t('auth.signup.title')}</h1>
+          <div class="flex items-center justify-center gap-2">
+            <h1 class="text-3xl font-bold text-slate-100">{t('auth.signup.title')}</h1>
+            <IntroButton />
+          </div>
           <p class="text-slate-400 mt-1">{t('auth.signup.subtitle')}</p>
         </header>
 
@@ -93,6 +114,20 @@ export function Signup() {
           >
             {submitting ? t('auth.signup.creating') : t('auth.signup.create')}
           </button>
+
+          {awaitingConfirmation && (
+            <div class="text-center text-sm text-slate-400">
+              <span>{t('auth.signup.resendPrompt')}</span>{' '}
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                class="text-primary-400 hover:text-primary-300 underline disabled:opacity-50"
+              >
+                {resending ? t('auth.signup.creating') : t('auth.signup.resend')}
+              </button>
+            </div>
+          )}
         </form>
 
         <p class="text-center text-slate-400 text-sm">

@@ -5,6 +5,7 @@ import { Settings } from './pages/Settings';
 import { ItemDetail } from './pages/ItemDetail';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
+import { AuthCallback } from './pages/AuthCallback';
 import { Onboarding } from './pages/Onboarding';
 import { NavBar } from './components/NavBar';
 import { UpdatePrompt } from './components/UpdatePrompt';
@@ -27,6 +28,7 @@ export function App() {
     return (
       <>
         <Router>
+          <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/signup" component={Signup} />
           <Route default component={Login} />
         </Router>

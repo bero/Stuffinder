@@ -10,7 +10,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { flowType: 'pkce' },
+});
 
 // Photos are in a private bucket; we serve them via time-limited signed URLs.
 const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
