@@ -57,7 +57,7 @@ function AuthedApp({ session }: { session: import('@supabase/supabase-js').Sessi
   if (loading) return <FullscreenLoader />;
 
   if (memberships.length === 0) {
-    return <Onboarding onDone={reload} />;
+    return <Onboarding onDone={reload} session={session} />;
   }
 
   if (!activeId) return <FullscreenLoader />;

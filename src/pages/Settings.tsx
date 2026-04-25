@@ -102,6 +102,13 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+    });
+  }, []);
 
   // Delete-with-reassign modal state.
   const [deleteTarget, setDeleteTarget] = useState<
@@ -618,11 +625,11 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                 {creatingInvite ? t('settings.creatingInvite') : t('settings.newInvite')}
               </button>
             </div>
-            <p class="text-xs text-slate-500 mb-3">
+            <p class="text-sm text-slate-300 mb-3">
               {t('settings.inviteHint')}
             </p>
             {invites.length === 0 ? (
-              <p class="text-slate-500 text-sm">{t('settings.noInvites')}</p>
+              <p class="text-sm text-slate-300">{t('settings.noInvites')}</p>
             ) : (
               <div class="space-y-2">
                 {invites.map((inv) => (
@@ -661,7 +668,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
               >
                 {exporting ? t('settings.exporting') : t('settings.exportCsv')}
               </button>
-              <p class="text-xs text-slate-500 px-1">{t('settings.exportCsvHint')}</p>
+              <p class="text-sm text-slate-300 px-1">{t('settings.exportCsvHint')}</p>
             </div>
             <div class="space-y-1">
               <button
@@ -671,7 +678,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
               >
                 {zipButtonLabel()}
               </button>
-              <p class="text-xs text-slate-500 px-1">{t('settings.exportZipHint')}</p>
+              <p class="text-sm text-slate-300 px-1">{t('settings.exportZipHint')}</p>
             </div>
             <div class="space-y-1">
               <input
@@ -688,7 +695,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
               >
                 {importButtonLabel()}
               </button>
-              <p class="text-xs text-slate-500 px-1">{t('settings.importHint')}</p>
+              <p class="text-sm text-slate-300 px-1">{t('settings.importHint')}</p>
             </div>
             {!isOwner && (
               <button onClick={handleLeave} class="btn-secondary w-full">
@@ -698,6 +705,9 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
             <button onClick={handleSignOut} class="btn-secondary w-full">
               {t('settings.signOut')}
             </button>
+            {userEmail && (
+              <p class="text-base text-slate-200 font-medium text-center break-all">{userEmail}</p>
+            )}
           </div>
         </div>
       )}

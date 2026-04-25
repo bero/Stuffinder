@@ -14,11 +14,13 @@ function errMsg(e: unknown, fallback: string): string {
 
 interface Props {
   onDone: () => void;
+  session: import('@supabase/supabase-js').Session;
 }
 
 type Mode = 'choose' | 'create' | 'join';
 
-export function Onboarding({ onDone }: Props) {
+export function Onboarding({ onDone, session }: Props) {
+  const email = session.user.email;
   const t = useT();
   const [mode, setMode] = useState<Mode>('choose');
   const [name, setName] = useState('');
@@ -86,7 +88,7 @@ export function Onboarding({ onDone }: Props) {
             <button onClick={() => setMode('join')} class="btn-secondary w-full py-4">
               {t('onboarding.joinOption')}
             </button>
-            <div class="text-center pt-2">
+            <div class="text-center pt-4 space-y-2">
               <button
                 type="button"
                 onClick={handleSignOut}
@@ -94,6 +96,9 @@ export function Onboarding({ onDone }: Props) {
               >
                 {t('settings.signOut')}
               </button>
+              {email && (
+                <p class="text-base text-slate-200 font-medium break-all">{email}</p>
+              )}
             </div>
           </div>
         )}
