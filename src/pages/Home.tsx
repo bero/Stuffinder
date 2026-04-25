@@ -246,6 +246,8 @@ export function Home({ activeHouseholdId }: Props) {
         </div>
         <input
           type="search"
+          name="search"
+          autoComplete="off"
           placeholder={t('home.searchPlaceholder')}
           value={searchQuery}
           onInput={(e) => setSearchQuery((e.target as HTMLInputElement).value)}
@@ -257,6 +259,7 @@ export function Home({ activeHouseholdId }: Props) {
       <div class="mb-4 space-y-2">
         <div class="flex gap-2">
           <select
+            name="categoryFilter"
             value={categoryId}
             onChange={(e) => setCategoryId((e.target as HTMLSelectElement).value)}
             class="select flex-1 text-sm py-2"
@@ -269,6 +272,7 @@ export function Home({ activeHouseholdId }: Props) {
             ))}
           </select>
           <select
+            name="locationFilter"
             value={locationId}
             onChange={(e) => setLocationId((e.target as HTMLSelectElement).value)}
             class="select flex-1 text-sm py-2"

@@ -94,6 +94,8 @@ export function TagPicker({ householdId, selected, allTags, onChange, onTagCreat
 
       <input
         type="text"
+        name="tagSearch"
+        autoComplete="off"
         value={input}
         onInput={(e) => setInput((e.target as HTMLInputElement).value)}
         onKeyDown={handleKeyDown}

@@ -43,6 +43,7 @@ export function QuickCreateCategory({ householdId, onCreated, onClose }: Categor
           <EmojiPicker value={icon} onChange={setIcon} placeholder="📦" />
           <input
             type="text"
+            name="categoryName"
             value={name}
             onInput={(e) => setName((e.target as HTMLInputElement).value)}
             placeholder={t('settings.categoryName')}
@@ -107,6 +108,7 @@ export function QuickCreateLocation({ householdId, locations, onCreated, onClose
           <EmojiPicker value={icon} onChange={setIcon} placeholder="📍" />
           <input
             type="text"
+            name="locationName"
             value={name}
             onInput={(e) => setName((e.target as HTMLInputElement).value)}
             placeholder={t('settings.locationName')}
@@ -116,6 +118,7 @@ export function QuickCreateLocation({ householdId, locations, onCreated, onClose
           />
         </div>
         <select
+          name="parentLocation"
           value={parentId}
           onChange={(e) => setParentId((e.target as HTMLSelectElement).value)}
           class="select"

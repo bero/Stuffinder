@@ -174,6 +174,7 @@ export function AddItem({ activeHouseholdId }: Props) {
           <input
             ref={fileInputRef}
             type="file"
+            name="photo"
             accept="image/*"
             multiple
             onChange={handlePhotoChange}

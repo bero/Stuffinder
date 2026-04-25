@@ -684,6 +684,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
               <input
                 ref={importInputRef}
                 type="file"
+                name="importFile"
                 accept="application/zip,.zip"
                 onChange={handleImportFile}
                 class="hidden"
@@ -725,6 +726,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                   <EmojiPicker value={editIcon} onChange={setEditIcon} placeholder="📦" />
                   <input
                     type="text"
+                    name="categoryName"
                     value={editName}
                     onInput={(e) => setEditName((e.target as HTMLInputElement).value)}
                     class="input flex-1"
@@ -776,6 +778,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                 <EmojiPicker value={newIcon} onChange={setNewIcon} placeholder="📦" />
                 <input
                   type="text"
+                  name="categoryName"
                   value={newName}
                   onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
                   placeholder={t('settings.categoryName')}
@@ -810,6 +813,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                   <EmojiPicker value={editIcon} onChange={setEditIcon} placeholder="📍" />
                   <input
                     type="text"
+                    name="locationName"
                     value={editName}
                     onInput={(e) => setEditName((e.target as HTMLInputElement).value)}
                     class="input flex-1"
@@ -817,6 +821,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                   />
                 </div>
                 <select
+                  name="parentLocation"
                   value={editParentId}
                   onChange={(e) => setEditParentId((e.target as HTMLSelectElement).value)}
                   class="select"
@@ -872,6 +877,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                 <EmojiPicker value={newIcon} onChange={setNewIcon} placeholder="📍" />
                 <input
                   type="text"
+                  name="locationName"
                   value={newName}
                   onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
                   placeholder={t('settings.locationName')}
@@ -880,6 +886,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                 />
               </div>
               <select
+                name="parentLocation"
                 value={newParentId}
                 onChange={(e) => setNewParentId((e.target as HTMLSelectElement).value)}
                 class="select"
@@ -919,6 +926,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
               <form key={tag.id} onSubmit={handleUpdateTag} class="card space-y-3">
                 <input
                   type="text"
+                  name="tagName"
                   value={editingTagName}
                   onInput={(e) => setEditingTagName((e.target as HTMLInputElement).value)}
                   class="input"
@@ -959,6 +967,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
           <form onSubmit={handleAddTag} class="card space-y-3">
             <input
               type="text"
+              name="tagName"
               value={newTagName}
               onInput={(e) => setNewTagName((e.target as HTMLInputElement).value)}
               placeholder={t('settings.tagName')}
