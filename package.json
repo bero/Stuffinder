@@ -8,7 +8,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen-icons": "node scripts/gen-icons.mjs",
+    "gen-og": "node scripts/gen-og-image.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

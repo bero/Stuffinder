@@ -3,19 +3,94 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#1e293b" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="StuffFinder" />
+    <meta name="apple-mobile-web-app-title" content="Stuffinder" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/mask-icon.svg" color="#0ea5e9" />
+
+    <title>Stuffinder — Catalogue and find your belongings | Free household inventory PWA</title>
+    <meta name="description" content="Stuffinder is a free progressive web app for cataloguing your stuff. Snap a photo, tag the location, and find anything in seconds. Share one inventory with your whole household. Available in 9 languages, installable on iOS and Android." />
+    <meta name="keywords" content="household inventory, find my stuff, home organisation app, item tracker, where did I put it, household catalogue, PWA inventory, shared household app" />
+    <meta name="author" content="Roland Bengtsson" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://www.stuffinder.se/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Stuffinder" />
+    <meta property="og:title" content="Stuffinder — Catalogue and find your belongings" />
+    <meta property="og:description" content="Snap a photo when you put something away, find it in seconds next time. Free PWA, shared with your whole household." />
+    <meta property="og:url" content="https://www.stuffinder.se/" />
+    <meta property="og:image" content="https://www.stuffinder.se/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Stuffinder — catalogue and find your belongings" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="sv_SE" />
+    <meta property="og:locale:alternate" content="fi_FI" />
+    <meta property="og:locale:alternate" content="de_DE" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="it_IT" />
+    <meta property="og:locale:alternate" content="es_ES" />
+    <meta property="og:locale:alternate" content="pt_PT" />
+    <meta property="og:locale:alternate" content="mk_MK" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Stuffinder — Catalogue and find your belongings" />
+    <meta name="twitter:description" content="Snap a photo when you put something away, find it in seconds next time. Free PWA, shared with your whole household." />
+    <meta name="twitter:image" content="https://www.stuffinder.se/og-image.png" />
+    <meta name="twitter:image:alt" content="Stuffinder — catalogue and find your belongings" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <title>StuffFinder</title>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Stuffinder",
+      "url": "https://www.stuffinder.se/",
+      "description": "A progressive web app for cataloguing household belongings. Snap a photo, tag the location, share the inventory with your household.",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Any (PWA — iOS, Android, Windows, macOS, Linux)",
+      "browserRequirements": "Requires JavaScript and a modern browser.",
+      "inLanguage": ["en", "sv", "fi", "de", "fr", "it", "es", "pt", "mk"],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Roland Bengtsson"
+      }
+    }
+    </script>
   </head>
   <body class="bg-slate-900 text-slate-100">
-    <div id="app"></div>
+    <div id="app">
+      <noscript>
+        <div style="max-width:720px;margin:3rem auto;padding:1.5rem;font-family:Inter,system-ui,sans-serif;line-height:1.6;">
+          <h1 style="font-size:2rem;margin:0 0 1rem;">Stuffinder</h1>
+          <p><strong>Catalogue your stuff and find it in seconds.</strong></p>
+          <p>Stuffinder is a free progressive web app that helps households keep track of their belongings. Take a photo when you put something away, tag its location and category, and search for it later from any device. Everyone in your household shares the same inventory.</p>
+          <h2 style="font-size:1.25rem;margin:1.5rem 0 0.5rem;">Five core concepts</h2>
+          <ul>
+            <li><strong>Item</strong> — a single thing you own, with a photo, name and tags.</li>
+            <li><strong>Location</strong> — where it lives, hierarchical (Garage &gt; Shelf 1).</li>
+            <li><strong>Category</strong> — what kind of thing it is (Tools, Electronics, Documents…).</li>
+            <li><strong>Tag</strong> — cross-cutting labels; an item can have any number.</li>
+            <li><strong>Household</strong> — the shared scope. Invite members with a code.</li>
+          </ul>
+          <p>Stuffinder runs in your browser and installs as an app on iOS, Android, Windows and macOS. It is available in English, Swedish, Finnish, German, French, Italian, Spanish, Portuguese and Macedonian.</p>
+          <p><strong>JavaScript is required to run the app.</strong> Please enable JavaScript and reload.</p>
+        </div>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

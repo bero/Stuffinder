@@ -9,13 +9,19 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'StuffFinder',
-        short_name: 'StuffFinder',
-        description: 'Find where you put your stuff',
+        id: '/',
+        name: 'Stuffinder — household inventory',
+        short_name: 'Stuffinder',
+        description: 'Catalogue your belongings with a photo and find them in seconds. Shared with your whole household.',
+        lang: 'en',
+        dir: 'ltr',
+        categories: ['lifestyle', 'productivity', 'utilities'],
         theme_color: '#1e293b',
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',
+        start_url: '/',
+        scope: '/',
         icons: [
           {
             src: 'pwa-192x192.png',

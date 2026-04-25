@@ -34,7 +34,7 @@ const en: Dict = {
   'common.retry': 'Retry',
   'common.edit': 'Edit',
 
-  'auth.login.title': 'StuffFinder',
+  'auth.login.title': 'Stuffinder',
   'auth.login.subtitle': 'Log in to your household',
   'auth.email': 'Email',
   'auth.password': 'Password',
@@ -89,7 +89,7 @@ const en: Dict = {
   'onboarding.joining': 'Joining…',
   'onboarding.joinFailed': 'Failed to join household',
 
-  'home.title': 'StuffFinder',
+  'home.title': 'Stuffinder',
   'home.tagline': 'Find where you put things',
   'home.searchPlaceholder': 'Search items...',
   'home.failedLoad': 'Failed to load items',
@@ -284,7 +284,7 @@ const sv: Dict = {
   'common.retry': 'Försök igen',
   'common.edit': 'Redigera',
 
-  'auth.login.title': 'StuffFinder',
+  'auth.login.title': 'Stuffinder',
   'auth.login.subtitle': 'Logga in på ditt hushåll',
   'auth.email': 'E-post',
   'auth.password': 'Lösenord',
@@ -339,7 +339,7 @@ const sv: Dict = {
   'onboarding.joining': 'Ansluter…',
   'onboarding.joinFailed': 'Kunde inte ansluta till hushåll',
 
-  'home.title': 'StuffFinder',
+  'home.title': 'Stuffinder',
   'home.tagline': 'Hitta var du lagt saker',
   'home.searchPlaceholder': 'Sök föremål...',
   'home.failedLoad': 'Kunde inte ladda föremål',
@@ -534,7 +534,7 @@ const fi: Dict = {
   'common.retry': 'Yritä uudelleen',
   'common.edit': 'Muokkaa',
 
-  'auth.login.title': 'StuffFinder',
+  'auth.login.title': 'Stuffinder',
   'auth.login.subtitle': 'Kirjaudu talouteesi',
   'auth.email': 'Sähköposti',
   'auth.password': 'Salasana',
@@ -589,7 +589,7 @@ const fi: Dict = {
   'onboarding.joining': 'Liitytään…',
   'onboarding.joinFailed': 'Talouteen liittyminen epäonnistui',
 
-  'home.title': 'StuffFinder',
+  'home.title': 'Stuffinder',
   'home.tagline': 'Löydä missä tavarasi ovat',
   'home.searchPlaceholder': 'Etsi esineitä...',
   'home.failedLoad': 'Esineiden lataaminen epäonnistui',
@@ -784,7 +784,7 @@ const de: Dict = {
   'common.retry': 'Erneut versuchen',
   'common.edit': 'Bearbeiten',
 
-  'auth.login.title': 'StuffFinder',
+  'auth.login.title': 'Stuffinder',
   'auth.login.subtitle': 'Bei deinem Haushalt anmelden',
   'auth.email': 'E-Mail',
   'auth.password': 'Passwort',
@@ -839,7 +839,7 @@ const de: Dict = {
   'onboarding.joining': 'Beitritt läuft…',
   'onboarding.joinFailed': 'Beitritt zum Haushalt fehlgeschlagen',
 
-  'home.title': 'StuffFinder',
+  'home.title': 'Stuffinder',
   'home.tagline': 'Finde wo deine Sachen sind',
   'home.searchPlaceholder': 'Objekte suchen...',
   'home.failedLoad': 'Objekte konnten nicht geladen werden',
@@ -1034,7 +1034,7 @@ const fr: Dict = {
   'common.retry': 'Réessayer',
   'common.edit': 'Modifier',
 
-  'auth.login.title': 'StuffFinder',
+  'auth.login.title': 'Stuffinder',
   'auth.login.subtitle': 'Connectez-vous à votre foyer',
   'auth.email': 'E-mail',
   'auth.password': 'Mot de passe',
@@ -1089,7 +1089,7 @@ const fr: Dict = {
   'onboarding.joining': 'Connexion…',
   'onboarding.joinFailed': 'Échec pour rejoindre le foyer',
 
-  'home.title': 'StuffFinder',
+  'home.title': 'Stuffinder',
   'home.tagline': 'Retrouvez où sont vos affaires',
   'home.searchPlaceholder': 'Rechercher des objets...',
   'home.failedLoad': 'Échec du chargement des objets',
@@ -1284,7 +1284,7 @@ const it: Dict = {
   'common.retry': 'Riprova',
   'common.edit': 'Modifica',
 
-  'auth.login.title': 'StuffFinder',
+  'auth.login.title': 'Stuffinder',
   'auth.login.subtitle': 'Accedi alla tua casa',
   'auth.email': 'E-mail',
   'auth.password': 'Password',
@@ -1339,7 +1339,7 @@ const it: Dict = {
   'onboarding.joining': 'Accesso…',
   'onboarding.joinFailed': 'Impossibile unirsi alla casa',
 
-  'home.title': 'StuffFinder',
+  'home.title': 'Stuffinder',
   'home.tagline': 'Trova dove hai messo le cose',
   'home.searchPlaceholder': 'Cerca oggetti...',
   'home.failedLoad': 'Impossibile caricare gli oggetti',
@@ -1534,7 +1534,7 @@ const es: Dict = {
   'common.retry': 'Reintentar',
   'common.edit': 'Editar',
 
-  'auth.login.title': 'StuffFinder',
+  'auth.login.title': 'Stuffinder',
   'auth.login.subtitle': 'Inicia sesión en tu hogar',
   'auth.email': 'Correo electrónico',
   'auth.password': 'Contraseña',
@@ -1589,7 +1589,7 @@ const es: Dict = {
   'onboarding.joining': 'Uniéndose…',
   'onboarding.joinFailed': 'Error al unirse al hogar',
 
-  'home.title': 'StuffFinder',
+  'home.title': 'Stuffinder',
   'home.tagline': 'Encuentra dónde pusiste las cosas',
   'home.searchPlaceholder': 'Buscar objetos...',
   'home.failedLoad': 'Error al cargar objetos',
@@ -1784,7 +1784,7 @@ const pt: Dict = {
   'common.retry': 'Tentar novamente',
   'common.edit': 'Editar',
 
-  'auth.login.title': 'StuffFinder',
+  'auth.login.title': 'Stuffinder',
   'auth.login.subtitle': 'Inicia sessão no teu lar',
   'auth.email': 'E-mail',
   'auth.password': 'Palavra-passe',
@@ -1839,7 +1839,7 @@ const pt: Dict = {
   'onboarding.joining': 'A entrar…',
   'onboarding.joinFailed': 'Falha ao entrar no lar',
 
-  'home.title': 'StuffFinder',
+  'home.title': 'Stuffinder',
   'home.tagline': 'Encontra onde puseste as coisas',
   'home.searchPlaceholder': 'Procurar itens...',
   'home.failedLoad': 'Falha ao carregar itens',
@@ -2034,7 +2034,7 @@ const mk: Dict = {
   'common.retry': 'Обиди се повторно',
   'common.edit': 'Уреди',
 
-  'auth.login.title': 'StuffFinder',
+  'auth.login.title': 'Stuffinder',
   'auth.login.subtitle': 'Најавете се во вашето домаќинство',
   'auth.email': 'Е-пошта',
   'auth.password': 'Лозинка',
@@ -2089,7 +2089,7 @@ const mk: Dict = {
   'onboarding.joining': 'Придружување…',
   'onboarding.joinFailed': 'Неуспешно придружување кон домаќинство',
 
-  'home.title': 'StuffFinder',
+  'home.title': 'Stuffinder',
   'home.tagline': 'Најдете каде ги оставивте работите',
   'home.searchPlaceholder': 'Пребарај ставки...',
   'home.failedLoad': 'Неуспешно вчитување на ставките',
