@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import {
   getCategories,
   getLocationsWithPath,
@@ -122,13 +122,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
   const active = memberships.find(m => m.household_id === activeHouseholdId);
   const isOwner = active?.role === 'owner';
 
-  useEffect(() => {
-    if (!activeHouseholdId) return;
-    loadData();
-    loadInvites();
-  }, [activeHouseholdId]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!activeHouseholdId) return;
     try {
       setLoading(true);
@@ -145,9 +139,9 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
     } finally {
       setLoading(false);
     }
-  }
+  }, [activeHouseholdId]);
 
-  async function loadInvites() {
+  const loadInvites = useCallback(async () => {
     if (!activeHouseholdId) return;
     try {
       const data = await getInvites(activeHouseholdId);
@@ -155,7 +149,13 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
     } catch (err) {
       console.error('Failed to load invites:', err);
     }
-  }
+  }, [activeHouseholdId]);
+
+  useEffect(() => {
+    if (!activeHouseholdId) return;
+    loadData();
+    loadInvites();
+  }, [activeHouseholdId, loadData, loadInvites]);
 
   function resetForm() {
     setNewName('');
@@ -931,6 +931,7 @@ export function Settings({ activeHouseholdId, memberships = [], onSelectHousehol
                   onInput={(e) => setEditingTagName((e.target as HTMLInputElement).value)}
                   class="input"
                   required
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- user just clicked "edit", focus the field for immediate typing
                   autoFocus
                 />
                 {tagError && <p class="text-red-400 text-sm">{tagError}</p>}

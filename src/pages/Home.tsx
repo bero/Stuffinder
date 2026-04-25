@@ -179,18 +179,24 @@ export function Home({ activeHouseholdId }: Props) {
     })();
   }, [activeHouseholdId]);
 
-  // Initial load when household changes.
+  // Initial load when household changes. runQuery is intentionally excluded —
+  // it's recreated every render, and we only want this effect to fire on
+  // household change.
   useEffect(() => {
     runQuery();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeHouseholdId]);
 
   // Run the query whenever search text or filters change. Debounced so typing
   // isn't overly chatty; chip taps still feel instant because the debounce
-  // just defers the request by 300 ms, it doesn't block the UI.
+  // just defers the request by 300 ms, it doesn't block the UI. runQuery is
+  // intentionally excluded — we trigger on the input values, not on every
+  // render where runQuery's identity changes.
   useEffect(() => {
     if (!activeHouseholdId) return;
     const timer = setTimeout(() => { runQuery(true); }, 300);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, categoryId, locationId, selectedTagIds, sortBy, sortDir, activeHouseholdId]);
 
   // Batch-sign photo URLs whenever the visible items change.

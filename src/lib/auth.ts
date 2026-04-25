@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { supabase, clearPhotoUrlCache } from './supabase';
 import type { Session } from '@supabase/supabase-js';
-import type { HouseholdMembership } from '../types/database';
+import type { Household, HouseholdMembership } from '../types/database';
+
+type MembershipRow = {
+  household_id: string;
+  role: HouseholdMembership['role'];
+  joined_at: string;
+  households: Household;
+};
 
 const ACTIVE_KEY = 'stuffinder:activeHouseholdId';
 
@@ -30,8 +37,10 @@ export function useMemberships(session: Session | null) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const userId = session?.user.id;
+
   const load = useCallback(async () => {
-    if (!session) {
+    if (!userId) {
       setMemberships([]);
       setLoading(false);
       return;
@@ -42,10 +51,10 @@ export function useMemberships(session: Session | null) {
       const { data, error } = await supabase
         .from('household_members')
         .select('household_id, role, joined_at, households(id, name, created_at)')
-        .eq('user_id', session.user.id);
+        .eq('user_id', userId);
       if (error) throw error;
       setMemberships(
-        (data || []).map((row: any) => ({
+        ((data || []) as unknown as MembershipRow[]).map((row) => ({
           household_id: row.household_id,
           role: row.role,
           joined_at: row.joined_at,
@@ -57,7 +66,7 @@ export function useMemberships(session: Session | null) {
     } finally {
       setLoading(false);
     }
-  }, [session?.user.id]);
+  }, [userId]);
 
   useEffect(() => { load(); }, [load]);
 

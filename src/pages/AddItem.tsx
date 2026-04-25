@@ -78,9 +78,16 @@ export function AddItem({ activeHouseholdId }: Props) {
     loadData();
   }, [activeHouseholdId]);
 
-  // Clean up object URLs when photos change or on unmount.
+  // Revoke any photo object URLs still held when the page unmounts. A ref
+  // keeps the cleanup closure pointed at the latest array (the cleanup itself
+  // only runs once on unmount, but it needs to see the current photos, not
+  // the empty array from first render).
+  const photosRef = useRef(photos);
+  useEffect(() => {
+    photosRef.current = photos;
+  }, [photos]);
   useEffect(() => () => {
-    photos.forEach((p) => URL.revokeObjectURL(p.preview));
+    photosRef.current.forEach((p) => URL.revokeObjectURL(p.preview));
   }, []);
 
   function handlePhotoChange(e: Event) {

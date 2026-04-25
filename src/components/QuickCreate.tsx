@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { createCategory, createLocation } from '../lib/api';
 import { useT } from '../lib/i18n';
 import type { Category, Location } from '../types/database';
@@ -16,6 +16,11 @@ export function QuickCreateCategory({ householdId, onCreated, onClose }: Categor
   const [icon, setIcon] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    nameInputRef.current?.focus();
+  }, []);
 
   async function submit(e: Event) {
     e.preventDefault();
@@ -42,6 +47,7 @@ export function QuickCreateCategory({ householdId, onCreated, onClose }: Categor
         <div class="flex gap-3">
           <EmojiPicker value={icon} onChange={setIcon} placeholder="📦" />
           <input
+            ref={nameInputRef}
             type="text"
             name="categoryName"
             value={name}
@@ -49,7 +55,6 @@ export function QuickCreateCategory({ householdId, onCreated, onClose }: Categor
             placeholder={t('settings.categoryName')}
             class="input flex-1"
             required
-            autoFocus
           />
         </div>
         {error && <p class="text-red-400 text-sm">{error}</p>}
@@ -80,6 +85,11 @@ export function QuickCreateLocation({ householdId, locations, onCreated, onClose
   const [parentId, setParentId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    nameInputRef.current?.focus();
+  }, []);
 
   async function submit(e: Event) {
     e.preventDefault();
@@ -107,6 +117,7 @@ export function QuickCreateLocation({ householdId, locations, onCreated, onClose
         <div class="flex gap-3">
           <EmojiPicker value={icon} onChange={setIcon} placeholder="📍" />
           <input
+            ref={nameInputRef}
             type="text"
             name="locationName"
             value={name}
@@ -114,7 +125,6 @@ export function QuickCreateLocation({ householdId, locations, onCreated, onClose
             placeholder={t('settings.locationName')}
             class="input flex-1"
             required
-            autoFocus
           />
         </div>
         <select

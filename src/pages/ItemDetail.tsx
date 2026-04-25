@@ -149,6 +149,9 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // scrollToIndex is recreated each render but only reads stable refs/state
+    // setters; including it would re-bind the keydown listener on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing, photos.length, carouselIndex]);
 
   useEffect(() => {
@@ -180,6 +183,9 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
     }
 
     loadItem();
+    // We deliberately don't reload when locale (`t`) changes — the loaded data
+    // would be identical, only the error string would differ.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function enterEditMode() {
@@ -393,7 +399,7 @@ export function ItemDetail({ id, activeHouseholdId }: Props) {
               ref={galleryRef}
               onScroll={handleGalleryScroll}
               class="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as any}
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as Record<string, string>}
             >
               {photos.length === 0 ? (
                 <div class="flex-shrink-0 w-full aspect-square flex items-center justify-center snap-center">

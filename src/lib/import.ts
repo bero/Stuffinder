@@ -272,7 +272,7 @@ export async function importHouseholdZip(
   // --- photos: always upload (merge and replace both need new paths) ---
   const photoPathMap = new Map<string, string>();
   const photosFolder = zip.folder('photos');
-  const photoFiles: Array<{ name: string; file: any }> = [];
+  const photoFiles: Array<{ name: string; file: import('jszip').JSZipObject }> = [];
   if (photosFolder) {
     photosFolder.forEach((relativePath, f) => {
       if (!f.dir) photoFiles.push({ name: relativePath, file: f });

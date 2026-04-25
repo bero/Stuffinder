@@ -15,9 +15,9 @@ polyfillCountryFlagEmojis();
 type ValidatableEl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 function isValidatable(el: EventTarget | null): el is ValidatableEl {
   return (
-    !!el &&
-    typeof (el as any).setCustomValidity === 'function' &&
-    'validity' in (el as any)
+    el instanceof HTMLInputElement ||
+    el instanceof HTMLTextAreaElement ||
+    el instanceof HTMLSelectElement
   );
 }
 

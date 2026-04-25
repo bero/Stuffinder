@@ -163,9 +163,12 @@ export async function queryItems(
 
   const hasQuery = query && query.trim();
 
+  // RPC and view builders have different generic parameters that can't be unified.
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   let q = hasQuery
     ? (supabase.rpc('search_items', { search_query: query!.trim() }) as any)
     : (supabase.from('items_with_details').select('*') as any);
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   q = q.eq('household_id', householdId);
   if (categoryId) q = q.eq('category_id', categoryId);

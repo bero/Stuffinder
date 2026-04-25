@@ -6,20 +6,24 @@ interface Props {
   onCancel: () => void;
 }
 
+type CamError =
+  | { kind: 'unavailable' }
+  | { kind: 'getUserMedia'; name: string; message: string };
+
 // Full-screen modal that streams the user's webcam (or phone rear camera) into
 // a <video> and lets them snap a still frame. Needs HTTPS or localhost.
 export function WebcamCapture({ onCapture, onCancel }: Props) {
   const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<CamError | null>(null);
   const [preview, setPreview] = useState<{ blob: Blob; url: string } | null>(null);
 
   useEffect(() => {
     let localStream: MediaStream | null = null;
     async function start() {
       if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-        setErr(t('webcam.error') + ' (mediaDevices unavailable — need HTTPS)');
+        setErr({ kind: 'unavailable' });
         return;
       }
       try {
@@ -33,11 +37,11 @@ export function WebcamCapture({ onCapture, onCancel }: Props) {
         console.warn('Camera with facingMode ideal failed, retrying any video', firstErr);
         try {
           localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error('getUserMedia failed', e);
-          const name = e?.name || 'Error';
-          const msg = e?.message || '';
-          setErr(`${t('webcam.error')} (${name}${msg ? ': ' + msg : ''})`);
+          const name = e instanceof Error ? e.name : 'Error';
+          const message = e instanceof Error ? e.message : '';
+          setErr({ kind: 'getUserMedia', name, message });
           return;
         }
       }
@@ -52,6 +56,13 @@ export function WebcamCapture({ onCapture, onCancel }: Props) {
       localStream?.getTracks().forEach((track) => track.stop());
     };
   }, []);
+
+  function errMessage(e: CamError): string {
+    if (e.kind === 'unavailable') {
+      return `${t('webcam.error')} (mediaDevices unavailable — need HTTPS)`;
+    }
+    return `${t('webcam.error')} (${e.name}${e.message ? ': ' + e.message : ''})`;
+  }
 
   // Free the preview URL when it changes or unmounts.
   useEffect(() => {
@@ -109,7 +120,7 @@ export function WebcamCapture({ onCapture, onCancel }: Props) {
 
       {err && (
         <div class="bg-red-900/80 border-t border-red-700 text-red-100 px-4 py-3">
-          {err}
+          {errMessage(err)}
         </div>
       )}
 
