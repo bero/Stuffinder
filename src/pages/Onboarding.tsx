@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { createHousehold, acceptInvite } from '../lib/api';
+import { signOut } from '../lib/auth';
 import { useT } from '../lib/i18n';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { IntroButton } from '../components/IntroButton';
@@ -41,6 +42,14 @@ export function Onboarding({ onDone }: Props) {
     }
   }
 
+  async function handleSignOut() {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Sign out failed:', err);
+    }
+  }
+
   async function handleJoin(e: Event) {
     e.preventDefault();
     if (!code.trim()) return;
@@ -77,6 +86,15 @@ export function Onboarding({ onDone }: Props) {
             <button onClick={() => setMode('join')} class="btn-secondary w-full py-4">
               {t('onboarding.joinOption')}
             </button>
+            <div class="text-center pt-2">
+              <button
+                type="button"
+                onClick={handleSignOut}
+                class="text-sm text-slate-400 hover:text-slate-200 underline"
+              >
+                {t('settings.signOut')}
+              </button>
+            </div>
           </div>
         )}
 
